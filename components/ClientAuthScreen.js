@@ -29,8 +29,8 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
         img.onerror = () => setImagenCargada(true);
     }, []);
 
-    // ============================================
-// FUNCIÓN PARA VERIFICAR NÚMERO (CORREGIDA)
+   // ============================================
+// FUNCIÓN PARA VERIFICAR NÚMERO (CORREGIDA DEFINITIVA)
 // ============================================
 const verificarNumero = async (numero) => {
     if (numero.length < 8) {
@@ -48,28 +48,36 @@ const verificarNumero = async (numero) => {
     const numeroCompleto = `53${numeroLimpio}`;
     
     try {
-        // 🔥 VERIFICAR SI ES ADMIN (DUEÑO) - VERSIÓN CORREGIDA
+        // 🔥 VERIFICAR SI ES ADMIN (DUEÑO) - VERSIÓN CORREGIDA DEFINITIVA
         if (numeroLimpio === config?.telefono?.replace(/\D/g, '')) {
             console.log('👑 Número de administradora detectado para Studioisma.nails');
             
-            // 🔥 GUARDAR EL NEGOCIO_ID CORRECTO
+            // 🔥 OBTENER EL NEGOCIO_ID CORRECTO
             const negocioId = window.NEGOCIO_ID_POR_DEFECTO || 
                               (typeof window.getNegocioId === 'function' ? 
                                window.getNegocioId() : 
                                'd4f7e2b1-3a8c-4b6d-9e5f-1c2d3e4f5a6b');
             
+            // 🔥 LIMPIAR CUALQUIER ID ANTERIOR
+            localStorage.removeItem('negocioId');
+            localStorage.removeItem('negocioNombre');
+            
+            // 🔥 GUARDAR EL ID CORRECTO
             localStorage.setItem('negocioId', negocioId);
             localStorage.setItem('negocioNombre', config?.nombre || 'Studioisma.nails');
+            
+            console.log('✅ negocioId guardado en localStorage:', negocioId);
+            console.log('✅ negocioNombre guardado:', config?.nombre);
             
             // Verificar si ya tiene sesión activa
             const loginTime = localStorage.getItem('adminLoginTime');
             const tieneSesion = loginTime && (Date.now() - parseInt(loginTime)) < 8 * 60 * 60 * 1000;
             
             if (tieneSesion) {
-                console.log('➡️ Redirigiendo a admin.html con negocioId:', negocioId);
+                console.log('➡️ Redirigiendo a admin.html');
                 window.location.href = 'admin.html';
             } else {
-                console.log('➡️ Redirigiendo a admin-login.html con negocioId:', negocioId);
+                console.log('➡️ Redirigiendo a admin-login.html');
                 window.location.href = 'admin-login.html';
             }
             return;
