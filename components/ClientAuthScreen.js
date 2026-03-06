@@ -115,51 +115,81 @@ const verificarNumero = async (numero) => {
     }
 };
     // ============================================
-    // FUNCIÓN CORREGIDA - REGISTRO AUTOMÁTICO
-    // ============================================
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+// FUNCIÓN CORREGIDA - REGISTRO AUTOMÁTICO CON MEJOR VERIFICACIÓN
+// ============================================
+const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!nombre.trim() || !whatsapp.trim()) {
+        setError('Completá todos los campos');
+        return;
+    }
+    
+    if (esAdmin || esProfesional) {
+        return;
+    }
+    
+    setVerificando(true);
+    
+    const numeroLimpio = whatsapp.replace(/\D/g, '');
+    const numeroCompleto = `53${numeroLimpio}`;
+    
+    try {
+        // Verificar si ya existe como cliente autorizado
+        const autorizado = await window.verificarAccesoCliente(numeroCompleto);
         
-        if (!nombre.trim() || !whatsapp.trim()) {
-            setError('Completá todos los campos');
+        if (autorizado) {
+            console.log('✅ Cliente encontrado, acceso directo:', autorizado);
+            onAccessGranted(autorizado.nombre, numeroCompleto);
             return;
         }
         
-        if (esAdmin || esProfesional) {
-            return;
-        }
+        // Si no existe según la primera verificación, 
+        // intentamos una búsqueda más directa
+        console.log('⚠️ Cliente no encontrado en primera verificación, buscando directamente...');
         
-        setVerificando(true);
+        const negocioId = window.NEGOCIO_ID_POR_DEFECTO || 
+                          (typeof window.getNegocioId === 'function' ? 
+                           window.getNegocioId() : 
+                           'd4f7e2b1-3a8c-4b6d-9e5f-1c2d3e4f5a6b');
         
-        const numeroLimpio = whatsapp.replace(/\D/g, '');
-        const numeroCompleto = `53${numeroLimpio}`;
+        // Búsqueda directa en la tabla
+        const response = await fetch(
+            `${window.SUPABASE_URL}/rest/v1/clientes_autorizados?negocio_id=eq.${negocioId}&whatsapp=eq.${numeroCompleto}&select=*`,
+            {
+                headers: {
+                    'apikey': window.SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
+                }
+            }
+        );
         
-        try {
-            // Verificar si ya existe como cliente autorizado
-            const autorizado = await window.verificarAccesoCliente(numeroCompleto);
-            
-            if (autorizado) {
-                // Si ya existe, darle acceso directo
-                onAccessGranted(autorizado.nombre, numeroCompleto);
+        if (response.ok) {
+            const data = await response.json();
+            if (data && data.length > 0) {
+                console.log('✅ Cliente encontrado en búsqueda directa:', data[0]);
+                onAccessGranted(data[0].nombre, numeroCompleto);
                 return;
             }
-            
-            // Si no existe, CREARLO AUTOMÁTICAMENTE (sin solicitud pendiente)
-            const nuevoCliente = await window.crearCliente(nombre, numeroCompleto);
-            
-            if (nuevoCliente) {
-                console.log('✅ Cliente creado automáticamente:', nuevoCliente);
-                onAccessGranted(nuevoCliente.nombre, numeroCompleto);
-            } else {
-                setError('Error al crear el cliente. Intentá más tarde.');
-            }
-        } catch (err) {
-            console.error('Error en submit:', err);
-            setError('Error en el sistema. Intentá más tarde.');
-        } finally {
-            setVerificando(false);
         }
-    };
+        
+        // Si realmente no existe, CREARLO
+        console.log('➕ Cliente no existe, creando nuevo:', nombre, numeroCompleto);
+        const nuevoCliente = await window.crearCliente(nombre, numeroCompleto);
+        
+        if (nuevoCliente) {
+            console.log('✅ Cliente creado automáticamente:', nuevoCliente);
+            onAccessGranted(nuevoCliente.nombre, numeroCompleto);
+        } else {
+            setError('Error al crear el cliente. Intentá más tarde.');
+        }
+    } catch (err) {
+        console.error('Error en submit:', err);
+        setError('Error en el sistema. Intentá más tarde.');
+    } finally {
+        setVerificando(false);
+    }
+};
 
     // 🔥 FUNCIÓN CORREGIDA - USA EL ID DE CONFIG-NEGOCIO.JS
     const handleAccesoDirecto = () => {
