@@ -1,4 +1,5 @@
 // utils/config-negocio.js - VERSIÓN MULTI-TENANT
+// CLIENTE: Studioisma.nails
 
 console.log('🏢 config-negocio.js cargado');
 
@@ -6,7 +7,7 @@ console.log('🏢 config-negocio.js cargado');
 // 🔥 CONFIGURACIÓN POR CLIENTE
 // ============================================
 // ⚠️ IMPORTANTE: Cambiá este ID por el de cada cliente
-const NEGOCIO_ID_POR_DEFECTO = '5e710464-de34-45ae-9197-cd6eeb748ca0'; // ID de BennetSalón
+const NEGOCIO_ID_POR_DEFECTO = 'd4f7e2b1-3a8c-4b6d-9e5f-1c2d3e4f5a6b'; // ID de Studioisma.nails
 
 // Cache de configuración (para evitar llamadas innecesarias)
 let configCache = null;
@@ -79,13 +80,15 @@ window.cargarConfiguracionNegocio = async function(forceRefresh = false) {
             console.log('✅ Configuración cargada y cacheada:');
             console.log('   - Nombre:', configCache.nombre);
             console.log('   - Teléfono:', configCache.telefono);
-            console.log('   - NTFY Topic:', configCache.ntfy_topic);
+            console.log('   - Email:', configCache.email);
+            console.log('   - Instagram:', configCache.instagram);
+            console.log('   - Facebook:', configCache.facebook);
             console.log('   - Logo:', configCache.logo_url);
             
-            // Si el ID de localStorage es diferente al que usamos, actualizamos
+            // Guardar ID en localStorage si no existe
             const localId = localStorage.getItem('negocioId');
-            if (!localId && negocioId === NEGOCIO_ID_POR_DEFECTO) {
-                console.log('💾 Guardando ID por defecto en localStorage para futuras sesiones');
+            if (!localId) {
+                console.log('💾 Guardando ID en localStorage para futuras sesiones');
                 localStorage.setItem('negocioId', negocioId);
             }
         } else {
@@ -104,7 +107,7 @@ window.cargarConfiguracionNegocio = async function(forceRefresh = false) {
  */
 window.getNombreNegocio = async function() {
     const config = await window.cargarConfiguracionNegocio();
-    return config?.nombre || 'Mi Salón';
+    return config?.nombre || 'Studioisma.nails';
 };
 
 /**
@@ -112,31 +115,66 @@ window.getNombreNegocio = async function() {
  */
 window.getTelefonoDuenno = async function() {
     const config = await window.cargarConfiguracionNegocio();
-    return config?.telefono || '53357234';
+    return config?.telefono || '54646800';
 };
 
 /**
- * Obtiene el color principal
+ * Obtiene el email del negocio
  */
-window.getColorPrincipal = async function() {
+window.getEmailNegocio = async function() {
     const config = await window.cargarConfiguracionNegocio();
-    return config?.color_primario || '#ec4899';
+    return config?.email || '';
 };
 
 /**
- * Obtiene el color secundario
+ * Obtiene el Instagram
  */
-window.getColorSecundario = async function() {
+window.getInstagram = async function() {
     const config = await window.cargarConfiguracionNegocio();
-    return config?.color_secundario || '#f9a8d4';
+    return config?.instagram || '';
 };
+
+/**
+ * Obtiene el Facebook
+ */
+window.getFacebook = async function() {
+    const config = await window.cargarConfiguracionNegocio();
+    return config?.facebook || '';
+};
+
+/**
+ * Obtiene el horario de atención
+ */
+window.getHorarioAtencion = async function() {
+    const config = await window.cargarConfiguracionNegocio();
+    return config?.horario_atencion || '';
+};
+
+/**
+ * Obtiene el mensaje de bienvenida
+ */
+window.getMensajeBienvenida = async function() {
+    const config = await window.cargarConfiguracionNegocio();
+    return config?.mensaje_bienvenida || '¡Bienvenida a nuestro salón!';
+};
+
+/**
+ * Obtiene el mensaje de confirmación
+ */
+window.getMensajeConfirmacion = async function() {
+    const config = await window.cargarConfiguracionNegocio();
+    return config?.mensaje_confirmacion || 'Tu turno ha sido reservado con éxito';
+};
+
+// 🗑️ FUNCIONES DE COLORES ELIMINADAS (ya no se usan)
+// window.getColorPrincipal y window.getColorSecundario fueron eliminadas
 
 /**
  * Obtiene el tópico de ntfy para notificaciones
  */
 window.getNtfyTopic = async function() {
     const config = await window.cargarConfiguracionNegocio();
-    return config?.ntfy_topic || 'lag-barberia';
+    return config?.ntfy_topic || 'studioisma-notifications';
 };
 
 /**
@@ -153,5 +191,5 @@ setTimeout(async () => {
     await window.cargarConfiguracionNegocio();
 }, 500);
 
-console.log('✅ config-negocio.js listo (modo multi-tenant)');
-console.log('🏷️  ID por defecto configurado:', NEGOCIO_ID_POR_DEFECTO);
+console.log('✅ config-negocio.js listo para Studioisma.nails');
+console.log('🏷️  ID configurado:', NEGOCIO_ID_POR_DEFECTO);
