@@ -1,4 +1,4 @@
-// components/ClientAuthScreen.js - VERSIÓN COMPLETA CORREGIDA
+// components/ClientAuthScreen.js - VERSIÓN CORREGIDA
 
 function ClientAuthScreen({ onAccessGranted, onGoBack }) {
     const [config, setConfig] = React.useState(null);
@@ -168,21 +168,23 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
         }
     };
 
-    // 🔥 FUNCIÓN CORREGIDA - AHORA GUARDA NEGOCIO_ID
+    // 🔥 FUNCIÓN CORREGIDA - USA EL ID DE CONFIG-NEGOCIO.JS
     const handleAccesoDirecto = () => {
         if (clienteAutorizado) {
             const numeroLimpio = whatsapp.replace(/\D/g, '');
             const numeroCompleto = `53${numeroLimpio}`;
             
-            // 🔥 GUARDAR NEGOCIO_ID PARA QUE FUNCIONE EN IPHONE
-            const negocioId = '5e710464-de34-45ae-9197-cd6eeb748ca0';
+            // 🔥 OBTENER EL ID DESDE CONFIG-NEGOCIO.JS
+            const negocioId = window.NEGOCIO_ID_POR_DEFECTO || 
+                              (typeof window.getNegocioId === 'function' ? 
+                               window.getNegocioId() : 
+                               'd4f7e2b1-3a8c-4b6d-9e5f-1c2d3e4f5a6b');
+            
             localStorage.setItem('negocioId', negocioId);
             
-            // También guardar nombre y color para el header
+            // También guardar nombre para el header
             if (config) {
                 localStorage.setItem('negocioNombre', config.nombre);
-                localStorage.setItem('colorPrimario', config.color_primario);
-                localStorage.setItem('colorSecundario', config.color_secundario);
             }
             
             console.log('✅ negocioId guardado en localStorage:', negocioId);
