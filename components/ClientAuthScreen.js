@@ -30,64 +30,82 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
     }, []);
 
     // ============================================
-    // FUNCIÓN PARA VERIFICAR NÚMERO
-    // ============================================
-    const verificarNumero = async (numero) => {
-        if (numero.length < 8) {
-            setClienteAutorizado(null);
-            setEsProfesional(false);
-            setProfesionalInfo(null);
-            setEsAdmin(false);
-            setError('');
+// FUNCIÓN PARA VERIFICAR NÚMERO (CORREGIDA)
+// ============================================
+const verificarNumero = async (numero) => {
+    if (numero.length < 8) {
+        setClienteAutorizado(null);
+        setEsProfesional(false);
+        setProfesionalInfo(null);
+        setEsAdmin(false);
+        setError('');
+        return;
+    }
+    
+    setVerificando(true);
+    
+    const numeroLimpio = numero.replace(/\D/g, '');
+    const numeroCompleto = `53${numeroLimpio}`;
+    
+    try {
+        // 🔥 VERIFICAR SI ES ADMIN (DUEÑO) - VERSIÓN CORREGIDA
+        if (numeroLimpio === config?.telefono?.replace(/\D/g, '')) {
+            console.log('👑 Número de administradora detectado para Studioisma.nails');
+            
+            // 🔥 GUARDAR EL NEGOCIO_ID CORRECTO
+            const negocioId = window.NEGOCIO_ID_POR_DEFECTO || 
+                              (typeof window.getNegocioId === 'function' ? 
+                               window.getNegocioId() : 
+                               'd4f7e2b1-3a8c-4b6d-9e5f-1c2d3e4f5a6b');
+            
+            localStorage.setItem('negocioId', negocioId);
+            localStorage.setItem('negocioNombre', config?.nombre || 'Studioisma.nails');
+            
+            // Verificar si ya tiene sesión activa
+            const loginTime = localStorage.getItem('adminLoginTime');
+            const tieneSesion = loginTime && (Date.now() - parseInt(loginTime)) < 8 * 60 * 60 * 1000;
+            
+            if (tieneSesion) {
+                console.log('➡️ Redirigiendo a admin.html con negocioId:', negocioId);
+                window.location.href = 'admin.html';
+            } else {
+                console.log('➡️ Redirigiendo a admin-login.html con negocioId:', negocioId);
+                window.location.href = 'admin-login.html';
+            }
             return;
         }
         
-        setVerificando(true);
-        
-        const numeroLimpio = numero.replace(/\D/g, '');
-        const numeroCompleto = `53${numeroLimpio}`;
-        
-        try {
-            // 🔥 VERIFICAR SI ES ADMIN (DUEÑO)
-            if (numeroLimpio === config?.telefono?.replace(/\D/g, '')) {
-                console.log('👑 Número de administradora detectado');
-                setEsAdmin(true);
+        // Verificar si es PROFESIONAL
+        if (window.verificarProfesionalPorTelefono) {
+            const profesional = await window.verificarProfesionalPorTelefono(numeroLimpio);
+            if (profesional) {
+                setEsProfesional(true);
+                setProfesionalInfo(profesional);
+                setEsAdmin(false);
+                setClienteAutorizado(null);
                 setVerificando(false);
                 return;
             }
-            
-            // Verificar si es PROFESIONAL
-            if (window.verificarProfesionalPorTelefono) {
-                const profesional = await window.verificarProfesionalPorTelefono(numeroLimpio);
-                if (profesional) {
-                    setEsProfesional(true);
-                    setProfesionalInfo(profesional);
-                    setEsAdmin(false);
-                    setClienteAutorizado(null);
-                    setVerificando(false);
-                    return;
-                }
-            }
-            
-            // Verificar si es CLIENTE AUTORIZADO
-            const existe = await window.verificarAccesoCliente(numeroCompleto);
-            
-            if (existe) {
-                setClienteAutorizado(existe);
-                setEsProfesional(false);
-                setEsAdmin(false);
-                setError('');
-            } else {
-                setClienteAutorizado(null);
-                setError('');
-            }
-        } catch (err) {
-            console.error('Error verificando:', err);
-        } finally {
-            setVerificando(false);
         }
-    };
-
+        
+        // Verificar si es CLIENTE AUTORIZADO
+        const existe = await window.verificarAccesoCliente(numeroCompleto);
+        
+        if (existe) {
+            setClienteAutorizado(existe);
+            setEsProfesional(false);
+            setEsAdmin(false);
+            setError('');
+        } else {
+            setClienteAutorizado(null);
+            setError('');
+        }
+    } catch (err) {
+        console.error('Error verificando:', err);
+    } finally {
+        setVerificando(false);
+    }
+};
     // ============================================
     // FUNCIÓN CORREGIDA - REGISTRO AUTOMÁTICO
     // ============================================
