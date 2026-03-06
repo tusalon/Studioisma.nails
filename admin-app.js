@@ -1,6 +1,7 @@
-// admin-app.js - Panel de administración (VERSIÓN SIN SOLICITUDES PENDIENTES)
+// admin-app.js - Panel de administración (VERSIÓN CORREGIDA CON FILTROS)
+// CLIENTE: Studioisma.nails
 
-console.log('🚀 ADMIN-APP.JS VERSIÓN SIN SOLICITUDES');
+console.log('🚀 ADMIN-APP.JS VERSIÓN CORREGIDA - Studioisma.nails');
 
 window.addEventListener('error', function(e) {
     console.error('❌ Error detectado, posible versión antigua:', e.message);
@@ -19,12 +20,52 @@ window.addEventListener('error', function(e) {
 });
 
 // ============================================
-// FUNCIONES DE SUPABASE
+// FUNCIÓN PARA OBTENER NEGOCIO_ID
 // ============================================
+function getNegocioId() {
+    // 1. Prioridad: localStorage (cuando el admin se loguea)
+    const localId = localStorage.getItem('negocioId');
+    if (localId) {
+        console.log('📌 AdminApp usando negocioId de localStorage:', localId);
+        return localId;
+    }
+    
+    // 2. Variable global de config-negocio.js
+    if (window.NEGOCIO_ID_POR_DEFECTO) {
+        console.log('📌 AdminApp usando NEGOCIO_ID_POR_DEFECTO:', window.NEGOCIO_ID_POR_DEFECTO);
+        return window.NEGOCIO_ID_POR_DEFECTO;
+    }
+    
+    // 3. Función global
+    if (typeof window.getNegocioId === 'function') {
+        const id = window.getNegocioId();
+        console.log('📌 AdminApp usando window.getNegocioId():', id);
+        return id;
+    }
+    
+    console.error('❌ No se pudo obtener negocioId');
+    return null;
+}
+
+// ============================================
+// FUNCIONES DE SUPABASE (CORREGIDAS CON FILTRO)
+// ============================================
+
+/**
+ * Obtiene todas las reservas del negocio actual
+ */
 async function getAllBookings() {
     try {
+        const negocioId = getNegocioId();
+        if (!negocioId) {
+            console.error('❌ No hay negocioId disponible');
+            return [];
+        }
+        
+        console.log('📋 Obteniendo reservas para negocio:', negocioId);
+        
         const res = await fetch(
-            `${window.SUPABASE_URL}/rest/v1/reservas?select=*&order=fecha.desc,hora_inicio.asc`,
+            `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${negocioId}&select=*&order=fecha.desc,hora_inicio.asc`,
             {
                 headers: {
                     'apikey': window.SUPABASE_ANON_KEY,
@@ -32,7 +73,12 @@ async function getAllBookings() {
                 }
             }
         );
-        if (!res.ok) return [];
+        
+        if (!res.ok) {
+            console.error('Error en respuesta:', await res.text());
+            return [];
+        }
+        
         const data = await res.json();
         return Array.isArray(data) ? data : [];
     } catch (error) {
@@ -41,10 +87,21 @@ async function getAllBookings() {
     }
 }
 
+/**
+ * Cancela una reserva (solo si pertenece al negocio actual)
+ */
 async function cancelBooking(id) {
     try {
+        const negocioId = getNegocioId();
+        if (!negocioId) {
+            console.error('❌ No hay negocioId disponible');
+            return false;
+        }
+        
+        console.log(`🗑️ Cancelando reserva ${id} para negocio:`, negocioId);
+        
         const res = await fetch(
-            `${window.SUPABASE_URL}/rest/v1/reservas?id=eq.${id}`,
+            `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${negocioId}&id=eq.${id}`,
             {
                 method: 'PATCH',
                 headers: {
@@ -55,15 +112,38 @@ async function cancelBooking(id) {
                 body: JSON.stringify({ estado: 'Cancelado' })
             }
         );
-        return res.ok;
+        
+        if (!res.ok) {
+            console.error('Error al cancelar:', await res.text());
+            return false;
+        }
+        
+        return true;
     } catch (error) {
         console.error('Error cancel booking:', error);
         return false;
     }
 }
 
+/**
+ * Crea una nueva reserva (asignándole el negocio actual)
+ */
 async function createBooking(bookingData) {
     try {
+        const negocioId = getNegocioId();
+        if (!negocioId) {
+            console.error('❌ No hay negocioId disponible');
+            return { success: false, error: 'No hay negocioId' };
+        }
+        
+        // Asegurar que la reserva tenga el negocio_id
+        const dataWithNegocio = {
+            ...bookingData,
+            negocio_id: negocioId
+        };
+        
+        console.log('📤 Creando reserva para negocio:', negocioId, dataWithNegocio);
+        
         const res = await fetch(
             `${window.SUPABASE_URL}/rest/v1/reservas`,
             {
@@ -74,13 +154,14 @@ async function createBooking(bookingData) {
                     'Content-Type': 'application/json',
                     'Prefer': 'return=representation'
                 },
-                body: JSON.stringify(bookingData)
+                body: JSON.stringify(dataWithNegocio)
             }
         );
         
         if (!res.ok) {
             const error = await res.text();
-            throw new Error(error);
+            console.error('Error al crear reserva:', error);
+            return { success: false, error };
         }
         
         const data = await res.json();
@@ -96,6 +177,12 @@ async function createBooking(bookingData) {
 // ============================================
 async function marcarTurnosCompletados() {
     try {
+        const negocioId = getNegocioId();
+        if (!negocioId) {
+            console.error('❌ No hay negocioId disponible');
+            return;
+        }
+        
         const ahora = new Date();
         const año = ahora.getFullYear();
         const mes = (ahora.getMonth() + 1).toString().padStart(2, '0');
@@ -110,9 +197,9 @@ async function marcarTurnosCompletados() {
         console.log('📅 Fecha LOCAL actual:', hoy);
         console.log('🕐 Hora LOCAL actual:', `${horaActual}:${minutosActuales}`);
         
-        // Buscar turnos Reservados con fecha MENOR a hoy
+        // Buscar turnos Reservados con fecha MENOR a hoy (días pasados)
         const responsePasados = await fetch(
-            `${window.SUPABASE_URL}/rest/v1/reservas?estado=eq.Reservado&fecha=lt.${hoy}&select=id,fecha,hora_inicio,hora_fin,cliente_nombre,servicio,profesional_nombre`,
+            `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${negocioId}&estado=eq.Reservado&fecha=lt.${hoy}&select=id,fecha,hora_inicio,hora_fin,cliente_nombre,servicio,profesional_nombre`,
             {
                 headers: {
                     'apikey': window.SUPABASE_ANON_KEY,
@@ -130,7 +217,7 @@ async function marcarTurnosCompletados() {
         
         // Turnos de HOY que ya terminaron
         const responseHoy = await fetch(
-            `${window.SUPABASE_URL}/rest/v1/reservas?estado=eq.Reservado&fecha=eq.${hoy}&select=id,fecha,hora_inicio,hora_fin,cliente_nombre,servicio,profesional_nombre`,
+            `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${negocioId}&estado=eq.Reservado&fecha=eq.${hoy}&select=id,fecha,hora_inicio,hora_fin,cliente_nombre,servicio,profesional_nombre`,
             {
                 headers: {
                     'apikey': window.SUPABASE_ANON_KEY,
@@ -159,7 +246,7 @@ async function marcarTurnosCompletados() {
                 console.log(`📝 Completando turno de ${turno.cliente_nombre} - ${turno.fecha} ${turno.hora_inicio} a ${turno.hora_fin}`);
                 
                 await fetch(
-                    `${window.SUPABASE_URL}/rest/v1/reservas?id=eq.${turno.id}`,
+                    `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${negocioId}&id=eq.${turno.id}`,
                     {
                         method: 'PATCH',
                         headers: {
@@ -726,6 +813,7 @@ function AdminApp() {
                 
                 await marcarTurnosCompletados();
                 
+                // Recargar después de marcar completados
                 if (userRole === 'profesional' && profesional) {
                     data = await window.getReservasPorProfesional?.(profesional.id, false) || [];
                 } else {
@@ -970,7 +1058,7 @@ El administrador cancelo la reserva.`;
                     </div>
                 </div>
 
-                {/* MODAL NUEVA RESERVA (sin cambios) */}
+                {/* MODAL NUEVA RESERVA */}
                 {showNuevaReservaModal && (
                     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                         <div className="bg-white rounded-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
@@ -1318,5 +1406,6 @@ El administrador cancelo la reserva.`;
     );
 }
 
+// Renderizar la aplicación
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<AdminApp />);
