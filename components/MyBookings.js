@@ -1,4 +1,4 @@
-// components/MyBookings.js - Versión con edición de perfil y registro automático
+// components/MyBookings.js - VERSIÓN CORREGIDA (SOLO RESERVAS DEL NEGOCIO ACTUAL)
 
 function MyBookings({ cliente, onVolver }) {
     const [bookings, setBookings] = React.useState([]);
@@ -9,6 +9,7 @@ function MyBookings({ cliente, onVolver }) {
     const [telefonoDuenno, setTelefonoDuenno] = React.useState('53357234');
     const [nombreNegocio, setNombreNegocio] = React.useState('');
     const [ntfyTopic, setNtfyTopic] = React.useState('reservas');
+    const [negocioId, setNegocioId] = React.useState(null);
     const [datosCargados, setDatosCargados] = React.useState(false);
     
     // Estados para edición de perfil
@@ -16,7 +17,39 @@ function MyBookings({ cliente, onVolver }) {
     const [nuevoNombre, setNuevoNombre] = React.useState(cliente?.nombre || '');
     const [guardandoPerfil, setGuardandoPerfil] = React.useState(false);
 
+    // ============================================
+    // FUNCIÓN PARA OBTENER EL NEGOCIO_ID
+    // ============================================
+    const obtenerNegocioId = () => {
+        // 1. Intentar desde localStorage
+        const localId = localStorage.getItem('negocioId');
+        if (localId) {
+            console.log('📌 MyBookings usando negocioId de localStorage:', localId);
+            return localId;
+        }
+        
+        // 2. Variable global de config-negocio.js
+        if (window.NEGOCIO_ID_POR_DEFECTO) {
+            console.log('📌 MyBookings usando NEGOCIO_ID_POR_DEFECTO:', window.NEGOCIO_ID_POR_DEFECTO);
+            return window.NEGOCIO_ID_POR_DEFECTO;
+        }
+        
+        // 3. Función global
+        if (typeof window.getNegocioId === 'function') {
+            const id = window.getNegocioId();
+            console.log('📌 MyBookings usando window.getNegocioId():', id);
+            return id;
+        }
+        
+        console.error('❌ No se pudo obtener negocioId en MyBookings');
+        return null;
+    };
+
     React.useEffect(() => {
+        const id = obtenerNegocioId();
+        setNegocioId(id);
+        console.log('🏢 MyBookings - Negocio ID:', id);
+        
         cargarReservas();
         cargarDatosNegocio();
     }, []);
@@ -42,9 +75,32 @@ function MyBookings({ cliente, onVolver }) {
     const cargarReservas = async () => {
         setLoading(true);
         setMensajeError('');
+        
+        const currentNegocioId = negocioId || obtenerNegocioId();
+        
+        if (!currentNegocioId) {
+            console.error('❌ No hay negocioId para cargar reservas');
+            setMensajeError('Error al identificar el negocio');
+            setLoading(false);
+            return;
+        }
+        
+        if (!cliente?.whatsapp) {
+            console.error('❌ No hay cliente.whatsapp');
+            setMensajeError('Error al identificar el cliente');
+            setLoading(false);
+            return;
+        }
+        
         try {
+            console.log('🔍 Buscando reservas para:', {
+                negocioId: currentNegocioId,
+                cliente: cliente.whatsapp
+            });
+            
+            // 🔥 CONSULTA CORREGIDA: Filtra POR NEGOCIO Y POR CLIENTE
             const response = await fetch(
-                `${window.SUPABASE_URL}/rest/v1/reservas?cliente_whatsapp=eq.${cliente.whatsapp}&order=fecha.desc,hora_inicio.desc`,
+                `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${currentNegocioId}&cliente_whatsapp=eq.${cliente.whatsapp}&order=fecha.desc,hora_inicio.desc`,
                 {
                     headers: {
                         'apikey': window.SUPABASE_ANON_KEY,
@@ -55,11 +111,13 @@ function MyBookings({ cliente, onVolver }) {
             );
             
             if (!response.ok) {
+                const errorText = await response.text();
+                console.error('❌ Error en respuesta:', errorText);
                 throw new Error('Error al cargar reservas');
             }
             
             const data = await response.json();
-            console.log('📋 Reservas del cliente:', data);
+            console.log(`📋 Reservas encontradas para ${cliente.nombre} en este negocio:`, data.length, data);
             setBookings(Array.isArray(data) ? data : []);
             
         } catch (error) {
@@ -266,9 +324,13 @@ Si no puede asistir, contactanos por WhatsApp al +${telefonoDuenno}`;
         }
         
         setCancelando(true);
+        
+        const currentNegocioId = negocioId || obtenerNegocioId();
+        
         try {
+            // 🔥 CANCELAR RESERVA FILTRANDO POR NEGOCIO
             const response = await fetch(
-                `${window.SUPABASE_URL}/rest/v1/reservas?id=eq.${id}`,
+                `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${currentNegocioId}&id=eq.${id}`,
                 {
                     method: 'PATCH',
                     headers: {
@@ -281,6 +343,8 @@ Si no puede asistir, contactanos por WhatsApp al +${telefonoDuenno}`;
             );
             
             if (!response.ok) {
+                const errorText = await response.text();
+                console.error('❌ Error al cancelar:', errorText);
                 throw new Error('Error al cancelar');
             }
             
@@ -449,7 +513,7 @@ Si no puede asistir, contactanos por WhatsApp al +${telefonoDuenno}`;
                 ) : reservasFiltradas.length === 0 ? (
                     <div className="text-center py-12 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-pink-200">
                         <div className="text-6xl mb-4">📅✨</div>
-                        <p className="text-pink-600 mb-2">No tenés reservas {filtro !== 'todas' ? filtro : ''}</p>
+                        <p className="text-pink-600 mb-2">No tenés reservas {filtro !== 'todas' ? filtro : ''} en {nombreNegocio}</p>
                         <button
                             onClick={onVolver}
                             className="text-pink-500 font-medium hover:underline"
