@@ -16,9 +16,9 @@ function getNegocioId() {
 // ============================================
 
 /**
- * Verifica si un cliente existe. Si no existe, lo crea automáticamente.
+ * Verifica si un cliente existe en la base de datos
  * @param {string} whatsapp - Número completo con 53 al inicio
- * @returns {Promise<object|null>} - Datos del cliente
+ * @returns {Promise<object|null>} - Datos del cliente o null
  */
 window.verificarAccesoCliente = async function(whatsapp) {
     try {
@@ -50,8 +50,7 @@ window.verificarAccesoCliente = async function(whatsapp) {
             return data[0];
         }
         
-        // Si NO existe, retornar null (el nombre se actualizará después)
-        console.log('📝 Cliente no encontrado (se creará al hacer submit)');
+        console.log('📝 Cliente no encontrado');
         return null;
         
     } catch (error) {
@@ -71,7 +70,29 @@ window.crearCliente = async function(nombre, whatsapp) {
         const negocioId = getNegocioId();
         console.log('➕ Creando nuevo cliente:', { nombre, whatsapp, negocio: negocioId });
         
-        const response = await fetch(
+        // PRIMERO: Verificar si ya existe en ESTE negocio
+        const checkUrl = `${window.SUPABASE_URL}/rest/v1/clientes_autorizados?negocio_id=eq.${negocioId}&whatsapp=eq.${whatsapp}&select=*`;
+        console.log('🔍 Verificando existencia:', checkUrl);
+        
+        const checkResponse = await fetch(checkUrl, {
+            headers: {
+                'apikey': window.SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
+            }
+        });
+        
+        if (checkResponse.ok) {
+            const existing = await checkResponse.json();
+            if (existing && existing.length > 0) {
+                console.log('✅ Cliente ya existe en este negocio:', existing[0]);
+                return existing[0];
+            }
+        }
+        
+        // SEGUNDO: Si no existe, CREARLO
+        console.log('📝 Cliente no existe en este negocio, creando...');
+        
+        const createResponse = await fetch(
             `${window.SUPABASE_URL}/rest/v1/clientes_autorizados`,
             {
                 method: 'POST',
@@ -90,18 +111,44 @@ window.crearCliente = async function(nombre, whatsapp) {
             }
         );
         
-        if (!response.ok) {
-            console.error('Error creando cliente:', await response.text());
+        if (!createResponse.ok) {
+            const errorText = await createResponse.text();
+            console.error('❌ Error al crear cliente:', {
+                status: createResponse.status,
+                statusText: createResponse.statusText,
+                error: errorText
+            });
+            
+            // Si es 409, puede ser un falso positivo, intentar obtener el cliente de nuevo
+            if (createResponse.status === 409) {
+                console.log('⚠️ Conflicto 409, intentando recuperar cliente existente...');
+                
+                const retryResponse = await fetch(checkUrl, {
+                    headers: {
+                        'apikey': window.SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
+                    }
+                });
+                
+                if (retryResponse.ok) {
+                    const retryData = await retryResponse.json();
+                    if (retryData && retryData.length > 0) {
+                        console.log('✅ Cliente recuperado después del conflicto:', retryData[0]);
+                        return retryData[0];
+                    }
+                }
+            }
+            
             return null;
         }
         
-        const nuevoCliente = await response.json();
+        const nuevoCliente = await createResponse.json();
         console.log('✅ Cliente creado exitosamente:', nuevoCliente);
         
         return Array.isArray(nuevoCliente) ? nuevoCliente[0] : nuevoCliente;
         
     } catch (error) {
-        console.error('Error en crearCliente:', error);
+        console.error('❌ Error en crearCliente:', error);
         return null;
     }
 };
