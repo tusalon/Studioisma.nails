@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RservasRoma - Reserva de Turnos</title>
+    <meta name="description" content="Reservá tu turno fácil y rápido">
+    
+    <!-- PWA Meta Tags con rutas absolutas -->
+    <link rel="manifest" href="/Plantilla/manifest.json">
+    <meta name="theme-color" content="#ec4899">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="RservasRoma">
+    <link rel="apple-touch-icon" href="/Plantilla/icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/Plantilla/icons/icon-192x192.png">
+    
+    <!-- Script para service worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/Plantilla/sw.js')
+                    .then(registration => {
+                        console.log('✅ Service Worker registrado:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('❌ Error registrando Service Worker:', error);
+                    });
+            });
+        }
+    </script>
+    
+    <!-- Resto de scripts (igual que antes) -->
+    <script src="https://resource.trickle.so/vendor_lib/unpkg/react@18/umd/react.production.min.js"></script>
+    <script src="https://resource.trickle.so/vendor_lib/unpkg/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://resource.trickle.so/vendor_lib/unpkg/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://resource.trickle.so/vendor_lib/unpkg/lucide-static@0.516.0/font/lucide.css" rel="stylesheet">
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .animate-fade-in {
+                animation: fadeIn 0.5s ease-out forwards;
+            }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <!-- Scripts (rutas relativas para los archivos JS) -->
+    <script src="utils/supabase-config.js"></script>
+    <script src="utils/config-negocio.js"></script>
+    <script src="utils/storage.js"></script>
+    <script src="utils/api.js"></script>
+    <script src="utils/timeLogic.js"></script>
+    <script src="utils/auth-clients.js"></script>
+    <script src="utils/auth-profesionales.js"></script>
+    <script src="utils/config.js"></script>
+    <script src="utils/servicios.js"></script>
+    <script src="utils/profesionales.js"></script>
+    <script src="utils/whatsapp-helper.js"></script>
+
+    <!-- Componentes -->
+    <script src="components/Header.js" type="text/babel"></script>
+    <script src="components/ServiceSelection.js" type="text/babel"></script>
+    <script src="components/ProfesionalSelector.js" type="text/babel"></script>
+    <script src="components/Calendar.js" type="text/babel"></script>
+    <script src="components/TimeSlots.js" type="text/babel"></script>
+    <script src="components/BookingForm.js" type="text/babel"></script>
+    <script src="components/Confirmation.js" type="text/babel"></script>
+    <script src="components/WelcomeScreen.js" type="text/babel"></script>
+    <script src="components/WhatsAppButton.js" type="text/babel"></script>
+    <script src="components/ClientAuthScreen.js" type="text/babel"></script>
+    <script src="components/MyBookings.js" type="text/babel"></script>
+    <script src="components/InstallButton.js" type="text/babel"></script>
+    
+    <!-- App de clientes -->
+    <script src="client-app.js" type="text/babel"></script>
+</body>
+</html>
