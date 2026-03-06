@@ -1,15 +1,28 @@
-// utils/config-negocio.js - VERSIÓN MULTI-TENANT
+// utils/config-negocio.js - VERSIÓN MULTI-TENANT CORREGIDA
 // CLIENTE: Studioisma.nails
 
 console.log('🏢 config-negocio.js cargado');
 
 // ============================================
-// 🔥 CONFIGURACIÓN POR CLIENTE
+// 🔥 CONFIGURACIÓN POR CLIENTE - ¡LO ÚNICO QUE CAMBIA!
 // ============================================
-// ⚠️ IMPORTANTE: Cambiá este ID por el de cada cliente
 const NEGOCIO_ID_POR_DEFECTO = 'd4f7e2b1-3a8c-4b6d-9e5f-1c2d3e4f5a6b'; // ID de Studioisma.nails
 
-// Cache de configuración (para evitar llamadas innecesarias)
+// Hacer accesible globalmente
+window.NEGOCIO_ID_POR_DEFECTO = NEGOCIO_ID_POR_DEFECTO;
+
+// ============================================
+// FUNCIONES PARA OBTENER EL ID (GLOBALES)
+// ============================================
+window.getNegocioId = function() {
+    return NEGOCIO_ID_POR_DEFECTO;
+};
+
+window.getNegocioIdFromConfig = function() {
+    return NEGOCIO_ID_POR_DEFECTO;
+};
+
+// Cache de configuración
 let configCache = null;
 let ultimaActualizacion = 0;
 const CACHE_DURATION = 2 * 60 * 1000; // 2 minutos
@@ -25,14 +38,13 @@ function getNegocioId() {
         return localId;
     }
     
-    // 2. Si no, usar el ID por defecto quemado en el código
+    // 2. Si no, usar el ID por defecto
     console.log('📌 Usando negocioId por defecto (quemado en código):', NEGOCIO_ID_POR_DEFECTO);
     return NEGOCIO_ID_POR_DEFECTO;
 }
 
 /**
  * Carga la configuración del negocio desde Supabase
- * @param {boolean} forceRefresh - Si es true, ignora el caché
  */
 window.cargarConfiguracionNegocio = async function(forceRefresh = false) {
     const negocioId = getNegocioId();
@@ -41,7 +53,7 @@ window.cargarConfiguracionNegocio = async function(forceRefresh = false) {
         return null;
     }
 
-    // Usar caché si no se fuerza refresco y tenemos datos recientes
+    // Usar caché si no se fuerza refresco
     if (!forceRefresh && configCache && (Date.now() - ultimaActualizacion) < CACHE_DURATION) {
         console.log('📦 Usando cache de configuración');
         return configCache;
@@ -53,13 +65,11 @@ window.cargarConfiguracionNegocio = async function(forceRefresh = false) {
         
         const url = `${window.SUPABASE_URL}/rest/v1/negocios?id=eq.${negocioId}&select=*`;
         
-        console.log('📡 URL completa:', url);
-        
         const response = await fetch(url, {
             headers: {
                 'apikey': window.SUPABASE_ANON_KEY,
                 'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
-                'Cache-Control': 'no-cache, no-store, must-revalidate'
+                'Cache-Control': 'no-cache'
             },
             cache: 'no-store'
         });
@@ -72,23 +82,22 @@ window.cargarConfiguracionNegocio = async function(forceRefresh = false) {
 
         const data = await response.json();
         
-        // GUARDAR EN CACHE
+        // Guardar en cache
         configCache = data[0] || null;
         ultimaActualizacion = Date.now();
         
         if (configCache) {
-            console.log('✅ Configuración cargada y cacheada:');
+            console.log('✅ Configuración cargada:');
             console.log('   - Nombre:', configCache.nombre);
             console.log('   - Teléfono:', configCache.telefono);
             console.log('   - Email:', configCache.email);
             console.log('   - Instagram:', configCache.instagram);
-            console.log('   - Facebook:', configCache.facebook);
             console.log('   - Logo:', configCache.logo_url);
             
-            // Guardar ID en localStorage si no existe
+            // Guardar ID en localStorage para futuras sesiones
             const localId = localStorage.getItem('negocioId');
             if (!localId) {
-                console.log('💾 Guardando ID en localStorage para futuras sesiones');
+                console.log('💾 Guardando ID en localStorage');
                 localStorage.setItem('negocioId', negocioId);
             }
         } else {
@@ -165,9 +174,6 @@ window.getMensajeConfirmacion = async function() {
     const config = await window.cargarConfiguracionNegocio();
     return config?.mensaje_confirmacion || 'Tu turno ha sido reservado con éxito';
 };
-
-// 🗑️ FUNCIONES DE COLORES ELIMINADAS (ya no se usan)
-// window.getColorPrincipal y window.getColorSecundario fueron eliminadas
 
 /**
  * Obtiene el tópico de ntfy para notificaciones
