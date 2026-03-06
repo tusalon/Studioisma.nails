@@ -1,4 +1,4 @@
-// components/InstallButton.js - Botón de instalación PWA
+// components/InstallButton.js - Botón de instalación PWA (VERSIÓN MEJORADA)
 
 function InstallButton() {
     const [deferredPrompt, setDeferredPrompt] = React.useState(null);
@@ -56,24 +56,30 @@ function InstallButton() {
             return;
         }
 
-        if (!deferredPrompt) return;
+        // Si tenemos el prompt guardado, usarlo
+        if (deferredPrompt) {
+            // Mostrar el prompt de instalación
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`✅ Resultado de la instalación: ${outcome}`);
+            setDeferredPrompt(null);
+            setIsInstallable(false);
+            return;
+        }
 
-        // Mostrar el prompt de instalación
-        deferredPrompt.prompt();
-
-        // Esperar la respuesta del usuario
-        const { outcome } = await deferredPrompt.userChoice;
-        console.log(`✅ Resultado de la instalación: ${outcome}`);
-
-        // Limpiar el prompt guardado
-        setDeferredPrompt(null);
-        setIsInstallable(false);
+        // Si no hay prompt (Android pero no se disparó), mostrar instrucciones
+        if (platform === 'android') {
+            alert('📱 Para instalar en Android:\n\n1. Tocá el menú de 3 puntos (arriba derecha)\n2. Seleccioná "Instalar aplicación"\n3. Confirmá');
+        } else {
+            // Desktop sin prompt
+            alert('📱 Para instalar en tu computadora:\n\nBuscá el icono de instalación en la barra de direcciones');
+        }
     };
 
     // No mostrar el botón si ya está instalada
     if (isInstalled) return null;
 
-    // En iOS, mostrar un botón con instrucciones
+    // En iOS, siempre mostrar el botón con instrucciones
     if (platform === 'ios') {
         return (
             <button
@@ -92,9 +98,7 @@ function InstallButton() {
         );
     }
 
-    // En Android/Desktop, mostrar botón de instalación solo si es instalable
-    if (!isInstallable) return null;
-
+    // En Android/Desktop, SIEMPRE mostrar el botón (con o sin prompt)
     return (
         <button
             onClick={handleInstallClick}
@@ -102,11 +106,19 @@ function InstallButton() {
             title="Instalar aplicación"
         >
             <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                <span className="text-white text-lg">📲</span>
+                <span className="text-white text-lg">
+                    {platform === 'android' ? '📲' : '📱'}
+                </span>
             </div>
             <div className="text-left">
                 <div className="font-bold text-sm">Instalar App</div>
-                <div className="text-xs text-pink-200">Acceso directo</div>
+                <div className="text-xs text-pink-200">
+                    {platform === 'android' 
+                        ? 'Android: Tocá aquí' 
+                        : platform === 'desktop'
+                            ? 'Acceso directo'
+                            : 'Instalar'}
+                </div>
             </div>
         </button>
     );
