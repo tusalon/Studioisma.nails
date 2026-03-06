@@ -1,4 +1,4 @@
-// components/ClientAuthScreen.js - VERSIÓN CORREGIDA
+// components/ClientAuthScreen.js - VERSIÓN REGISTRO AUTOMÁTICO
 
 function ClientAuthScreen({ onAccessGranted, onGoBack }) {
     const [config, setConfig] = React.useState(null);
@@ -6,12 +6,9 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
     const [imagenCargada, setImagenCargada] = React.useState(false);
     const [nombre, setNombre] = React.useState('');
     const [whatsapp, setWhatsapp] = React.useState('');
-    const [solicitudEnviada, setSolicitudEnviada] = React.useState(false);
     const [error, setError] = React.useState('');
     const [clienteAutorizado, setClienteAutorizado] = React.useState(null);
     const [verificando, setVerificando] = React.useState(false);
-    const [yaTieneSolicitud, setYaTieneSolicitud] = React.useState(false);
-    const [estadoRechazado, setEstadoRechazado] = React.useState(false);
     const [esProfesional, setEsProfesional] = React.useState(false);
     const [profesionalInfo, setProfesionalInfo] = React.useState(null);
     const [esAdmin, setEsAdmin] = React.useState(false);
@@ -32,11 +29,12 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
         img.onerror = () => setImagenCargada(true);
     }, []);
 
+    // ============================================
+    // FUNCIÓN PARA VERIFICAR NÚMERO
+    // ============================================
     const verificarNumero = async (numero) => {
         if (numero.length < 8) {
             setClienteAutorizado(null);
-            setYaTieneSolicitud(false);
-            setEstadoRechazado(false);
             setEsProfesional(false);
             setProfesionalInfo(null);
             setEsAdmin(false);
@@ -53,18 +51,8 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
             // 🔥 VERIFICAR SI ES ADMIN (DUEÑO)
             if (numeroLimpio === config?.telefono?.replace(/\D/g, '')) {
                 console.log('👑 Número de administradora detectado');
-                
-                // Verificar si ya tiene sesión activa
-                const loginTime = localStorage.getItem('adminLoginTime');
-                const tieneSesion = loginTime && (Date.now() - parseInt(loginTime)) < 8 * 60 * 60 * 1000;
-                
-                if (tieneSesion) {
-                    // Si ya tiene sesión, va directo al panel
-                    window.location.href = 'admin.html';
-                } else {
-                    // Si no, va al login
-                    window.location.href = 'admin-login.html';
-                }
+                setEsAdmin(true);
+                setVerificando(false);
                 return;
             }
             
@@ -76,7 +64,6 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
                     setProfesionalInfo(profesional);
                     setEsAdmin(false);
                     setClienteAutorizado(null);
-                    setError('👩‍🎨 Acceso como profesional detectado');
                     setVerificando(false);
                     return;
                 }
@@ -87,39 +74,12 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
             
             if (existe) {
                 setClienteAutorizado(existe);
-                setYaTieneSolicitud(false);
-                setEstadoRechazado(false);
                 setEsProfesional(false);
                 setEsAdmin(false);
                 setError('');
             } else {
                 setClienteAutorizado(null);
-                
-                if (window.obtenerEstadoSolicitud) {
-                    const estado = await window.obtenerEstadoSolicitud(numeroCompleto);
-                    
-                    if (estado && estado.existe) {
-                        if (estado.estado === 'pendiente') {
-                            setYaTieneSolicitud(true);
-                            setEstadoRechazado(false);
-                            setError('Ya tenés una solicitud pendiente.');
-                        } 
-                        else if (estado.estado === 'rechazado') {
-                            setYaTieneSolicitud(false);
-                            setEstadoRechazado(true);
-                            setError('Tu solicitud anterior fue rechazada.');
-                        }
-                        else {
-                            setYaTieneSolicitud(true);
-                            setEstadoRechazado(false);
-                            setError('Este número ya fue registrado.');
-                        }
-                    } else {
-                        setYaTieneSolicitud(false);
-                        setEstadoRechazado(false);
-                        setError('');
-                    }
-                }
+                setError('');
             }
         } catch (err) {
             console.error('Error verificando:', err);
@@ -128,6 +88,9 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
         }
     };
 
+    // ============================================
+    // FUNCIÓN CORREGIDA - REGISTRO AUTOMÁTICO
+    // ============================================
     const handleSubmit = async (e) => {
         e.preventDefault();
         
@@ -146,19 +109,23 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
         const numeroCompleto = `53${numeroLimpio}`;
         
         try {
+            // Verificar si ya existe como cliente autorizado
             const autorizado = await window.verificarAccesoCliente(numeroCompleto);
             
             if (autorizado) {
+                // Si ya existe, darle acceso directo
                 onAccessGranted(autorizado.nombre, numeroCompleto);
                 return;
             }
             
-            const agregado = await window.agregarClientePendiente(nombre, numeroCompleto);
+            // Si no existe, CREARLO AUTOMÁTICAMENTE (sin solicitud pendiente)
+            const nuevoCliente = await window.crearCliente(nombre, numeroCompleto);
             
-            if (agregado) {
-                setSolicitudEnviada(true);
-                setError('');
-                console.log('✅ Solicitud enviada');
+            if (nuevoCliente) {
+                console.log('✅ Cliente creado automáticamente:', nuevoCliente);
+                onAccessGranted(nuevoCliente.nombre, numeroCompleto);
+            } else {
+                setError('Error al crear el cliente. Intentá más tarde.');
             }
         } catch (err) {
             console.error('Error en submit:', err);
@@ -209,71 +176,6 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
     const sticker = config?.especialidad?.toLowerCase().includes('uñas') ? '💅' : 
                     config?.especialidad?.toLowerCase().includes('pelo') ? '💇‍♀️' : 
                     config?.especialidad?.toLowerCase().includes('belleza') ? '🌸' : '💖';
-
-    if (solicitudEnviada) {
-        return (
-            <div className="min-h-screen flex flex-col items-center justify-center p-6 animate-fade-in relative overflow-hidden">
-                {/* Imagen de fondo */}
-                <div className="absolute inset-0 z-0">
-                    <img 
-                        src="https://images.unsplash.com/photo-1604654894610-df63bc536371?q=80&w=2071&auto=format&fit=crop" 
-                        alt="Fondo de salón" 
-                        className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black/40"></div>
-                </div>
-
-                {/* Botón volver */}
-                {onGoBack && (
-                    <button
-                        onClick={onGoBack}
-                        className="absolute top-4 left-4 z-20 w-10 h-10 bg-pink-500/80 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-pink-600 transition-colors border border-pink-300"
-                        title="Volver"
-                    >
-                        <i className="icon-arrow-left text-white text-xl"></i>
-                    </button>
-                )}
-
-                <div className="relative z-10 bg-white/20 backdrop-blur-md p-8 rounded-2xl shadow-2xl max-w-md border border-pink-300/50">
-                    <div className="w-20 h-20 bg-pink-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl ring-4 ring-pink-300/50">
-                        <i className="icon-check text-4xl text-white"></i>
-                    </div>
-                    
-                    <h2 className="text-2xl font-bold text-white mb-3 text-center">✨ ¡Solicitud Enviada! ✨</h2>
-                    
-                    <div className="bg-black/40 backdrop-blur-sm p-6 rounded-xl border border-pink-300/30">
-                        <p className="text-white mb-4 text-center">
-                            Gracias por querer ser parte de <span className="font-bold text-pink-300">{nombreNegocio}</span>
-                        </p>
-                        
-                        <div className="bg-pink-500/20 p-4 rounded-xl text-left space-y-2 mb-4 border border-pink-300/30">
-                            <p className="text-sm text-white">
-                                <span className="font-semibold text-pink-300">📱 Tu número:</span> +{whatsapp}
-                            </p>
-                            <p className="text-sm text-white">
-                                <span className="font-semibold text-pink-300">👤 Nombre:</span> {nombre}
-                            </p>
-                        </div>
-                        
-                        <p className="text-white/80 text-sm text-center">
-                            La administradora revisará tu solicitud y te contactará por WhatsApp.
-                        </p>
-                    </div>
-                    
-                    <div className="text-sm text-white/60 text-center mt-4">
-                        <p>Contacto:</p>
-                        <a 
-                            href={`https://wa.me/${telefonoDuenno}`} 
-                            target="_blank" 
-                            className="text-pink-300 font-medium inline-flex items-center gap-1 mt-2 hover:text-pink-200 transition-colors"
-                        >
-                            💬 +{telefonoDuenno}
-                        </a>
-                    </div>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
@@ -433,12 +335,8 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
 
                         {/* Mensajes de error */}
                         {error && !esAdmin && !esProfesional && (
-                            <div className={`text-sm p-3 rounded-lg flex items-start gap-2 ${
-                                estadoRechazado 
-                                    ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' 
-                                    : 'bg-red-500/20 text-red-300 border border-red-500/30'
-                            }`}>
-                                <i className={`${estadoRechazado ? 'icon-alert-circle' : 'icon-triangle-alert'} mt-0.5`}></i>
+                            <div className="text-sm p-3 rounded-lg flex items-start gap-2 bg-red-500/20 text-red-300 border border-red-500/30">
+                                <i className="icon-triangle-alert mt-0.5"></i>
                                 <span>{error}</span>
                             </div>
                         )}
@@ -494,11 +392,11 @@ function ClientAuthScreen({ onAccessGranted, onGoBack }) {
                             {!clienteAutorizado && !esAdmin && !esProfesional && !verificando && (
                                 <button
                                     type="submit"
-                                    disabled={verificando || (yaTieneSolicitud && !estadoRechazado)}
+                                    disabled={verificando}
                                     className="w-full bg-pink-500 text-white py-4 rounded-xl font-bold hover:bg-pink-600 transition transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg text-lg border-2 border-pink-300"
                                 >
                                     <span className="text-xl">💅</span>
-                                    {verificando ? 'Verificando...' : 'Solicitar Acceso como Cliente'}
+                                    {verificando ? 'Verificando...' : 'Registrarme y Reservar'}
                                     <span className="text-xl">✨</span>
                                 </button>
                             )}
