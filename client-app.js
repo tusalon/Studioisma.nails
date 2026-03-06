@@ -280,8 +280,8 @@ function ClientApp() {
                             {/* WhatsApp Button */}
                             <WhatsAppButton />
                             
-                            {/* Botón de instalación PWA - SIEMPRE VISIBLE */}
-                            <InstallButton />
+                         /* Botón de instalación PWA - SIEMPRE VISIBLE */
+                           
                         </div>
                     </div>
                 );
@@ -302,7 +302,7 @@ function ClientApp() {
                         />
                         
                         {/* Botón de instalación PWA también en confirmación */}
-                        <InstallButton />
+                        
                     </div>
                 );
             
