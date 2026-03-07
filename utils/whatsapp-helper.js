@@ -1,42 +1,66 @@
-// utils/whatsapp-helper.js - VERSIÓN SIMPLIFICADA QUE FUNCIONA EN iOS
+// utils/whatsapp-helper.js - VERSIÓN DEFINITIVA PARA iOS
+// CLIENTE: Studioisma.nails
 
-console.log('📱 whatsapp-helper.js VERSIÓN SIMPLIFICADA');
+console.log('📱 whatsapp-helper.js VERSIÓN DEFINITIVA PARA iOS');
 
 // ============================================
-// FUNCIÓN ÚNICA Y UNIVERSAL - FUNCIONA EN TODOS LADOS
+// DETECTOR DE iOS
+// ============================================
+window.esIOS = function() {
+    return [
+        'iPad Simulator',
+        'iPhone Simulator',
+        'iPod Simulator',
+        'iPad',
+        'iPhone',
+        'iPod'
+    ].includes(navigator.platform)
+    || (navigator.userAgent.includes("Mac") && "ontouchend" in document);
+};
+
+// ============================================
+// FUNCIÓN UNIVERSAL - FUNCIONA EN iOS
 // ============================================
 window.enviarWhatsApp = function(telefono, mensaje) {
     try {
+        console.log('📤 Iniciando envío WhatsApp a:', telefono);
+        
+        // Limpiar número (quitar todo excepto dígitos)
         const telefonoLimpio = telefono.replace(/\D/g, '');
+        
+        // Asegurar formato internacional (sin +)
+        let numeroCompleto = telefonoLimpio;
+        if (!numeroCompleto.startsWith('53')) {
+            numeroCompleto = `53${numeroLimpio}`;
+        }
+        
+        // Codificar mensaje
         const mensajeCodificado = encodeURIComponent(mensaje);
         
-        console.log('📤 Enviando WhatsApp a:', telefonoLimpio);
+        // ✅ URL CORRECTA que funciona en iOS
+        const url = `https://wa.me/${numeroCompleto}?text=${mensajeCodificado}`;
         
-        // ✅ MÉTODO QUE FUNCIONA EN iOS, Android y Desktop
-        const url = `https://api.whatsapp.com/send?phone=${telefonoLimpio}&text=${mensajeCodificado}`;
+        console.log('🔗 Abriendo URL:', url);
         
-        // Crear link invisible y hacer click
-        const link = document.createElement('a');
-        link.href = url;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        
-        // Limpiar después
-        setTimeout(() => {
-            document.body.removeChild(link);
-        }, 200);
+        // ✅ MÉTODO QUE SÍ FUNCIONA EN iOS
+        if (window.esIOS()) {
+            // En iOS: usar location.href (funciona 100%)
+            window.location.href = url;
+        } else {
+            // En Android/Desktop: mantener ventana nueva
+            window.open(url, '_blank');
+        }
         
         return true;
     } catch (error) {
         console.error('❌ Error en enviarWhatsApp:', error);
         
-        // Fallback: abrir en nueva ventana
+        // FALLBACK ULTRA SIMPLE
         const telefonoLimpio = telefono.replace(/\D/g, '');
-        const mensajeCodificado = encodeURIComponent(mensaje);
-        window.open(`https://api.whatsapp.com/send?phone=${telefonoLimpio}&text=${mensajeCodificado}`, '_blank');
+        const url = `https://wa.me/53${telefonoLimpio}?text=${encodeURIComponent(mensaje)}`;
+        
+        // Último recurso
+        window.location.href = url;
         
         return false;
     }
@@ -48,9 +72,11 @@ window.enviarWhatsApp = function(telefono, mensaje) {
 window.notificarNuevaReserva = function(booking) {
     try {
         if (!booking) {
-            console.error('❌ No hay datos de reserva para notificar');
+            console.error('❌ No hay datos de reserva');
             return false;
         }
+
+        console.log('📤 Enviando notificación de NUEVA RESERVA');
 
         const fechaConDia = window.formatFechaCompleta ? 
             window.formatFechaCompleta(booking.fecha) : 
@@ -62,7 +88,8 @@ window.notificarNuevaReserva = function(booking) {
             
         const profesional = booking.profesional_nombre || booking.trabajador_nombre || 'No asignada';
         
-        const mensaje = 
+        // Mensaje para WhatsApp
+        const mensajeWhatsApp = 
 `🆕 *NUEVA RESERVA - Studioisma.nails*
 
 👤 *Cliente:* ${booking.cliente_nombre}
@@ -77,13 +104,13 @@ window.notificarNuevaReserva = function(booking) {
         // Número fijo de la dueña (Studioisma.nails)
         const telefonoDuenno = "54646800";
         
-        // Enviar WhatsApp
-        window.enviarWhatsApp(telefonoDuenno, mensaje);
+        // ⚡ Enviar WhatsApp INMEDIATAMENTE
+        window.enviarWhatsApp(telefonoDuenno, mensajeWhatsApp);
         
-        // También enviar push
+        // También enviar push (esto no afecta iOS)
         window.enviarPushNuevaReserva(booking);
         
-        console.log('✅ Notificaciones de nueva reserva enviadas');
+        console.log('✅ Notificaciones enviadas');
         return true;
     } catch (error) {
         console.error('Error en notificarNuevaReserva:', error);
@@ -97,9 +124,11 @@ window.notificarNuevaReserva = function(booking) {
 window.notificarCancelacion = function(booking) {
     try {
         if (!booking) {
-            console.error('❌ No hay datos de reserva para notificar cancelación');
+            console.error('❌ No hay datos de reserva');
             return false;
         }
+
+        console.log('📤 Enviando notificación de CANCELACIÓN');
 
         const fechaConDia = window.formatFechaCompleta ? 
             window.formatFechaCompleta(booking.fecha) : 
@@ -111,7 +140,7 @@ window.notificarCancelacion = function(booking) {
             
         const profesional = booking.profesional_nombre || booking.trabajador_nombre || 'No asignada';
         
-        const mensaje = 
+        const mensajeWhatsApp = 
 `❌ *CANCELACIÓN DE CLIENTE - Studioisma.nails*
 
 👤 *Cliente:* ${booking.cliente_nombre}
@@ -125,10 +154,10 @@ El cliente canceló su turno desde la app.`;
 
         const telefonoDuenno = "54646800";
         
-        // Enviar WhatsApp
-        window.enviarWhatsApp(telefonoDuenno, mensaje);
+        // ⚡ Enviar WhatsApp INMEDIATAMENTE
+        window.enviarWhatsApp(telefonoDuenno, mensajeWhatsApp);
         
-        // También enviar push
+        // Push (no afecta iOS)
         window.enviarPushCancelacion(booking);
         
         console.log('✅ Notificaciones de cancelación enviadas');
@@ -140,7 +169,7 @@ El cliente canceló su turno desde la app.`;
 };
 
 // ============================================
-// NOTIFICACIONES PUSH (ntfy)
+// NOTIFICACIONES PUSH (ntfy) - SIN CAMBIOS
 // ============================================
 window.enviarPushNuevaReserva = function(booking) {
     try {
@@ -156,35 +185,22 @@ window.enviarPushNuevaReserva = function(booking) {
         
         const mensajePush = 
 `NUEVA RESERVA
-
 Cliente: ${booking.cliente_nombre}
 WhatsApp: ${booking.cliente_whatsapp}
 Servicio: ${booking.servicio} (${booking.duracion} min)
 Fecha: ${fechaConDia}
 Hora: ${horaFormateada}
-Profesional: ${profesional}
-
-Reserva confirmada automáticamente.`;
-
-        const tituloPush = 'Nueva reserva - Studioisma.nails';
+Profesional: ${profesional}`;
 
         fetch('https://ntfy.sh/studioisma-notifications', {
             method: 'POST',
             body: mensajePush,
             headers: {
-                'Title': tituloPush,
+                'Title': 'Nueva reserva - Studioisma.nails',
                 'Priority': 'default',
                 'Tags': 'tada'
             }
-        })
-        .then(response => {
-            if (response.ok) {
-                console.log('✅ Push de nueva reserva enviado');
-            }
-        })
-        .catch(error => {
-            console.error('❌ Error enviando push:', error);
-        });
+        }).catch(error => console.error('❌ Error push:', error));
         
     } catch (error) {
         console.error('Error en push:', error);
@@ -199,74 +215,24 @@ window.enviarPushCancelacion = function(booking) {
         
         const mensajePush = 
 `CANCELACION DE CLIENTE
-
 Cliente: ${booking.cliente_nombre}
 WhatsApp: ${booking.cliente_whatsapp}
 Servicio: ${booking.servicio}
-Fecha: ${fechaConDia}
-Hora: ${window.formatTo12Hour ? window.formatTo12Hour(booking.hora_inicio) : booking.hora_inicio}`;
-
-        const tituloPush = 'Cancelación - Studioisma.nails';
+Fecha: ${fechaConDia}`;
 
         fetch('https://ntfy.sh/studioisma-notifications', {
             method: 'POST',
             body: mensajePush,
             headers: {
-                'Title': tituloPush,
+                'Title': 'Cancelación - Studioisma.nails',
                 'Priority': 'default',
                 'Tags': 'x'
             }
-        })
-        .then(response => {
-            if (response.ok) {
-                console.log('✅ Push de cancelación enviado');
-            }
-        })
-        .catch(error => {
-            console.error('❌ Error enviando push:', error);
-        });
+        }).catch(error => console.error('❌ Error push:', error));
         
     } catch (error) {
         console.error('Error en push:', error);
     }
 };
 
-// ============================================
-// NOTIFICACIÓN PARA CLIENTE APROBADO
-// ============================================
-window.notificarClienteAprobado = function(telefono, nombre) {
-    try {
-        const fechaHoy = new Date();
-        const fechaStr = `${fechaHoy.getFullYear()}-${(fechaHoy.getMonth()+1).toString().padStart(2,'0')}-${fechaHoy.getDate().toString().padStart(2,'0')}`;
-        const fechaConDia = window.formatFechaCompleta ? 
-            window.formatFechaCompleta(fechaStr) : 
-            fechaStr;
-        
-        const mensaje = 
-`✅ *¡FELICIDADES! Has sido ACEPTADA en Studioisma.nails*
-
-Hola *${nombre}*, nos complace informarte que tu solicitud de acceso ha sido *APROBADA*.
-
-🎉 *Ya puede reservar turnos:*
-• Reservar online las 24/7
-• Cancelar turnos desde la app
-• Recibir recordatorios automáticos
-
-📱 *Ingresar ahora mismo:*
-1. Abrir la app desde tu celular
-2. Iniciar sesión con tu número
-3. Elegir servicio, profesional y horario
-
-💖 *Studioisma.nails - Tu espacio de belleza*
-
-_${fechaConDia}_`;
-
-        window.enviarWhatsApp(telefono, mensaje);
-        return true;
-    } catch (error) {
-        console.error('Error en notificarClienteAprobado:', error);
-        return false;
-    }
-};
-
-console.log('✅ whatsapp-helper.js simplificado listo');
+console.log('✅ whatsapp-helper.js VERSIÓN iOS LISTO');

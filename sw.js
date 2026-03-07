@@ -1,4 +1,4 @@
-// sw.js - Service Worker para Studioisma.nails
+// sw.js - Service Worker para Studioisma.nails (VERSIÓN CORREGIDA)
 
 const CACHE_NAME = 'studioisma-nails-v1';
 const urlsToCache = [
@@ -23,7 +23,7 @@ const urlsToCache = [
 // INSTALACIÓN
 // ============================================
 self.addEventListener('install', event => {
-  console.log('📦 Service Worker instalando para Studioisma.nails...');
+  console.log('📦 Service Worker instalando...');
   self.skipWaiting();
   
   event.waitUntil(
@@ -62,13 +62,21 @@ self.addEventListener('activate', event => {
 });
 
 // ============================================
-// ESTRATEGIA DE CACHÉ
+// ESTRATEGIA DE CACHÉ (CORREGIDA PARA WHATSAPP)
 // ============================================
 self.addEventListener('fetch', event => {
   // Ignorar peticiones que no sean HTTP
   if (!event.request.url.startsWith('http')) return;
   
-  // Ignorar APIs externas
+  // ⚡ NO INTERCEPTAR WHATSAPP (ESENCIAL PARA iOS)
+  if (event.request.url.includes('wa.me') || 
+      event.request.url.includes('api.whatsapp.com') ||
+      event.request.url.includes('whatsapp.com')) {
+    console.log('📱 Dejando pasar WhatsApp sin cache');
+    return;
+  }
+  
+  // Ignorar otras APIs externas
   if (event.request.url.includes('supabase.co')) return;
   if (event.request.url.includes('ntfy.sh')) return;
   if (event.request.url.includes('unsplash.com')) return;

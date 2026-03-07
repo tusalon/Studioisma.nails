@@ -1,4 +1,4 @@
-// components/BookingForm.js - Versión femenina
+// components/BookingForm.js - Versión CORREGIDA para iOS
 
 function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cliente }) {
     const [submitting, setSubmitting] = React.useState(false);
@@ -38,6 +38,46 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
 
             console.log('📤 Enviando reserva:', bookingData);
             const result = await createBooking(bookingData);
+            
+            // ⚡ ENVIAR WHATSAPP INMEDIATAMENTE (en el MISMO evento)
+            if (result.success && result.data) {
+                console.log('✅ Reserva creada, enviando WhatsApp...');
+                
+                // Preparar datos para notificación
+                const fechaConDia = window.formatFechaCompleta ? 
+                    window.formatFechaCompleta(date) : date;
+                
+                const horaFormateada = window.formatTo12Hour ? 
+                    window.formatTo12Hour(time) : time;
+                
+                // Mensaje para WhatsApp
+                const mensaje = 
+`🆕 *NUEVA RESERVA - Studioisma.nails*
+
+👤 *Cliente:* ${cliente.nombre}
+📱 *WhatsApp:* ${cliente.whatsapp}
+💅 *Servicio:* ${service.nombre} (${service.duracion} min)
+📅 *Fecha:* ${fechaConDia}
+⏰ *Hora:* ${horaFormateada}
+👩‍🎨 *Profesional:* ${profesional.nombre}
+
+✅ Reserva confirmada automáticamente. 💖`;
+
+                // Número fijo de la dueña
+                const telefonoDuenno = "54646800";
+                
+                // ⚡ ENVIAR AHORA MISMO (sin setTimeout)
+                if (window.enviarWhatsApp) {
+                    window.enviarWhatsApp(telefonoDuenno, mensaje);
+                }
+                
+                // Push notification (no afecta iOS)
+                if (window.enviarPushNuevaReserva) {
+                    window.enviarPushNuevaReserva(result.data);
+                }
+            }
+            
+            // Llamar al onSubmit con los datos
             onSubmit(result.data);
 
         } catch (err) {

@@ -1,4 +1,4 @@
-// admin-app.js - Panel de administración (VERSIÓN CORREGIDA CON FILTROS)
+// admin-app.js - Panel de administración (VERSIÓN CORREGIDA CON WHATSAPP PARA iOS)
 // CLIENTE: Studioisma.nails
 
 console.log('🚀 ADMIN-APP.JS VERSIÓN CORREGIDA - Studioisma.nails');
@@ -308,7 +308,7 @@ const indiceToHoraLegible = (indice) => {
 };
 
 // ============================================
-// FUNCIÓN PARA ENVIAR MENSAJE DE CANCELACIÓN POR WHATSAPP
+// FUNCIÓN CORREGIDA PARA ENVIAR MENSAJE DE CANCELACIÓN POR WHATSAPP (iOS COMPATIBLE)
 // ============================================
 const enviarCancelacionWhatsApp = (bookingData) => {
     try {
@@ -334,9 +334,15 @@ Podés hacerlo desde la app
 Disculpá las molestias.`;
 
         const telefono = bookingData.cliente_whatsapp.replace(/\D/g, '');
-        const encodedText = encodeURIComponent(mensaje);
         
-        window.open(`https://api.whatsapp.com/send?phone=${telefono}&text=${encodedText}`, '_blank');
+        // ✅ USAR LA FUNCIÓN UNIVERSAL (que funciona en iOS)
+        if (window.enviarWhatsApp) {
+            window.enviarWhatsApp(telefono, mensaje);
+        } else {
+            // Fallback
+            const encodedText = encodeURIComponent(mensaje);
+            window.open(`https://wa.me/${telefono}?text=${encodedText}`, '_blank');
+        }
         
         console.log('📤 Mensaje de cancelación enviado a:', telefono);
     } catch (error) {
@@ -859,11 +865,15 @@ function AdminApp() {
         });
     }, [userRole, userNivel, profesional]);
 
+    // ============================================
+    // HANDLE CANCEL CORREGIDO (iOS COMPATIBLE)
+    // ============================================
     const handleCancel = async (id, bookingData) => {
         if (!confirm(`¿Cancelar reserva de ${bookingData.cliente_nombre}?`)) return;
         
         const ok = await cancelBooking(id);
         if (ok) {
+            // ⚡ ENVIAR WHATSAPP INMEDIATAMENTE (sin async después)
             enviarCancelacionWhatsApp(bookingData);
             
             // Notificar al dueño por NTFY

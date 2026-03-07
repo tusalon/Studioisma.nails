@@ -1,7 +1,6 @@
-// components/Confirmation.js - VERSIÓN SIMPLIFICADA
+// components/Confirmation.js - VERSIÓN SIMPLIFICADA (SIN ENVÍO AUTOMÁTICO)
 
 function Confirmation({ booking, onReset }) {
-    const [notificacionesEnviadas, setNotificacionesEnviadas] = React.useState(false);
     const [telefonoDuenno, setTelefonoDuenno] = React.useState('54646800');
     const [nombreNegocio, setNombreNegocio] = React.useState('Studioisma.nails');
 
@@ -20,22 +19,8 @@ function Confirmation({ booking, onReset }) {
         cargarDatos();
     }, []);
 
-    React.useEffect(() => {
-        if (!notificacionesEnviadas && booking) {
-            // Enviar notificaciones después de 1.5 segundos
-            const timer = setTimeout(() => {
-                console.log('📤 Enviando notificaciones...');
-                if (window.notificarNuevaReserva) {
-                    window.notificarNuevaReserva(booking);
-                } else {
-                    console.error('❌ window.notificarNuevaReserva no está definido');
-                }
-                setNotificacionesEnviadas(true);
-            }, 1500);
-            
-            return () => clearTimeout(timer);
-        }
-    }, [booking, notificacionesEnviadas]);
+    // ⚡ ELIMINADO: useEffect con setTimeout que causaba problemas en iOS
+    // Ahora el WhatsApp se envía en BookingForm.js inmediatamente
 
     if (!booking) {
         console.error('❌ booking no definido');
