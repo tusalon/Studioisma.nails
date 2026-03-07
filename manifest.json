@@ -1,7 +1,7 @@
 {
   "name": "Studioisma.nails - Reserva de Turnos",
   "short_name": "Studioisma.nails",
-  "description": "Reservá tu turno fácil y rápido en Studioisma.nails",
+  "description": "Reserva tu turno fácil y rápido en Studioisma.nails",
   "start_url": "/Studioisma.nails/",
   "scope": "/Studioisma.nails/",
   "display": "standalone",
@@ -13,50 +13,58 @@
     {
       "src": "/Studioisma.nails/icons/icon-72x72.png",
       "sizes": "72x72",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     },
     {
       "src": "/Studioisma.nails/icons/icon-96x96.png",
       "sizes": "96x96",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     },
     {
       "src": "/Studioisma.nails/icons/icon-128x128.png",
       "sizes": "128x128",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     },
     {
       "src": "/Studioisma.nails/icons/icon-144x144.png",
       "sizes": "144x144",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     },
     {
       "src": "/Studioisma.nails/icons/icon-152x152.png",
       "sizes": "152x152",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     },
     {
       "src": "/Studioisma.nails/icons/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     },
     {
       "src": "/Studioisma.nails/icons/icon-384x384.png",
       "sizes": "384x384",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     },
     {
       "src": "/Studioisma.nails/icons/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/Studioisma.nails/screenshots/mobile.webp",
+      "sizes": "750x1334",
+      "type": "image/webp",
+      "form_factor": "narrow",
+      "label": "Pantalla de inicio en móvil"
+    },
+    {
+      "src": "/Studioisma.nails/screenshots/desktop.webp",
+      "sizes": "1280x800",
+      "type": "image/webp",
+      "form_factor": "wide",
+      "label": "Pantalla principal en escritorio"
     }
   ]
 }
