@@ -1,145 +1,46 @@
-// components/Confirmation.js - Versión con notificaciones dinámicas
+// components/Confirmation.js - VERSIÓN SIMPLIFICADA
 
 function Confirmation({ booking, onReset }) {
+    const [notificacionesEnviadas, setNotificacionesEnviadas] = React.useState(false);
     const [telefonoDuenno, setTelefonoDuenno] = React.useState('53357234');
-    const [nombreNegocio, setNombreNegocio] = React.useState('');
-    const [ntfyTopic, setNtfyTopic] = React.useState('reservas');
-    const [cargando, setCargando] = React.useState(true);
+    const [nombreNegocio, setNombreNegocio] = React.useState('Studioisma.nails');
 
     React.useEffect(() => {
+        // Cargar datos del negocio
         const cargarDatos = async () => {
-            setCargando(true);
             try {
-                console.log('📱 Confirmation - Cargando datos para notificaciones...');
                 const tel = await window.getTelefonoDuenno();
                 const nombre = await window.getNombreNegocio();
-                const topic = await window.getNtfyTopic();
-                
-                console.log('📱 Datos cargados:', { tel, nombre, topic });
-                
                 setTelefonoDuenno(tel);
                 setNombreNegocio(nombre);
-                setNtfyTopic(topic);
             } catch (error) {
-                console.error('Error cargando datos de notificación:', error);
-            } finally {
-                setCargando(false);
+                console.error('Error cargando datos:', error);
             }
         };
         cargarDatos();
     }, []);
 
+    React.useEffect(() => {
+        if (!notificacionesEnviadas && booking) {
+            // Enviar notificaciones después de 1.5 segundos
+            const timer = setTimeout(() => {
+                console.log('📤 Enviando notificaciones...');
+                if (window.notificarNuevaReserva) {
+                    window.notificarNuevaReserva(booking);
+                } else {
+                    console.error('❌ window.notificarNuevaReserva no está definido');
+                }
+                setNotificacionesEnviadas(true);
+            }, 1500);
+            
+            return () => clearTimeout(timer);
+        }
+    }, [booking, notificacionesEnviadas]);
+
     if (!booking) {
         console.error('❌ booking no definido');
         return null;
     }
-
-    const enviarWhatsAppDuenno = () => {
-        try {
-            const fechaConDia = window.formatFechaCompleta ? 
-                window.formatFechaCompleta(booking.fecha) : 
-                booking.fecha;
-            
-            const horaFormateada = formatTo12Hour(booking.hora_inicio);
-            const profesional = booking.profesional_nombre || booking.trabajador_nombre || 'No asignada';
-            
-            const mensaje = 
-`🆕 *NUEVA RESERVA - ${nombreNegocio}*
-
-👤 *Cliente:* ${booking.cliente_nombre}
-📱 *WhatsApp:* ${booking.cliente_whatsapp}
-💅 *Servicio:* ${booking.servicio} (${booking.duracion} min)
-📅 *Fecha:* ${fechaConDia}
-⏰ *Hora:* ${horaFormateada}
-👩‍🎨 *Profesional:* ${profesional}
-
-✅ Reserva confirmada automáticamente. 💖`;
-
-            const telefonoLimpio = telefonoDuenno.replace(/\D/g, '');
-            const encodedText = encodeURIComponent(mensaje);
-            
-            console.log('📤 Enviando WhatsApp a:', telefonoLimpio);
-            
-            const link = document.createElement('a');
-            link.href = `https://api.whatsapp.com/send?phone=${telefonoLimpio}&text=${encodedText}`;
-            link.target = '_blank';
-            link.rel = 'noopener noreferrer';
-            link.style.display = 'none';
-            document.body.appendChild(link);
-            link.click();
-            
-            setTimeout(() => {
-                document.body.removeChild(link);
-            }, 200);
-            
-            console.log('✅ WhatsApp enviado a la administradora');
-        } catch (error) {
-            console.error('Error enviando WhatsApp:', error);
-        }
-    };
-
-    const enviarPushDuenno = () => {
-        try {
-            const fechaConDia = window.formatFechaCompleta ? 
-                window.formatFechaCompleta(booking.fecha) : 
-                booking.fecha;
-            
-            const horaFormateada = formatTo12Hour(booking.hora_inicio);
-            const profesional = booking.profesional_nombre || booking.trabajador_nombre || 'No asignada';
-            
-            const mensajePush = 
-`NUEVA RESERVA
-
-Cliente: ${booking.cliente_nombre}
-WhatsApp: ${booking.cliente_whatsapp}
-Servicio: ${booking.servicio} (${booking.duracion} min)
-Fecha: ${fechaConDia}
-Hora: ${horaFormateada}
-Profesional: ${profesional}
-
-Reserva confirmada automáticamente.`;
-
-            const tituloPush = `Nueva reserva - ${nombreNegocio}`;
-
-            console.log('📤 Enviando push a ntfy:', ntfyTopic);
-            
-            fetch(`https://ntfy.sh/${ntfyTopic}`, {
-                method: 'POST',
-                body: mensajePush,
-                headers: {
-                    'Title': tituloPush,
-                    'Priority': 'default',
-                    'Tags': 'tada'
-                }
-            })
-            .then(response => {
-                if (response.ok) {
-                    console.log('✅ Notificación push enviada a ntfy:', ntfyTopic);
-                } else {
-                    console.error('❌ Error en respuesta ntfy:', response.status);
-                }
-            })
-            .catch(error => {
-                console.error('❌ Error enviando notificación push:', error);
-            });
-            
-        } catch (error) {
-            console.error('Error enviando Push:', error);
-        }
-    };
-
-    React.useEffect(() => {
-        if (cargando) return;
-        
-        const timer = setTimeout(() => {
-            console.log('📤 Enviando notificaciones a:', telefonoDuenno);
-            enviarWhatsAppDuenno();
-            enviarPushDuenno();
-            console.log('✅ Ambas notificaciones enviadas');
-        }, 1500);
-        
-        return () => clearTimeout(timer);
-    }, [telefonoDuenno, nombreNegocio, ntfyTopic, cargando]);
 
     const fechaConDia = window.formatFechaCompleta ? 
         window.formatFechaCompleta(booking.fecha) : 
@@ -154,8 +55,7 @@ Reserva confirmada automáticamente.`;
             <h2 className="text-2xl font-bold text-pink-800 mb-2">✨ ¡Turno Reservado! ✨</h2>
             <p className="text-pink-600 mb-6 max-w-xs mx-auto">Tu cita ha sido agendada correctamente</p>
 
-            <div className="bg-white/90 backdrop-blur-sm p-6 rounded-2xl shadow-xl border-2 border-pink-300 w-full max-w-sm mb-6 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-1 bg-pink-500"></div>
+            <div className="bg-white/90 backdrop-blur-sm p-6 rounded-2xl shadow-xl border-2 border-pink-300 w-full max-w-sm mb-6">
                 <div className="space-y-4 text-left">
                     <div>
                         <div className="text-xs text-pink-400 uppercase tracking-wider font-semibold mb-1">Cliente</div>
@@ -180,7 +80,7 @@ Reserva confirmada automáticamente.`;
                         </div>
                         <div>
                             <div className="text-xs text-pink-400 uppercase tracking-wider font-semibold mb-1">Hora</div>
-                            <div className="font-medium text-pink-700">{formatTo12Hour(booking.hora_inicio)}</div>
+                            <div className="font-medium text-pink-700">{window.formatTo12Hour ? window.formatTo12Hour(booking.hora_inicio) : booking.hora_inicio}</div>
                         </div>
                     </div>
                     
@@ -198,7 +98,7 @@ Reserva confirmada automáticamente.`;
                     </div>
                     <div className="text-left">
                         <p className="font-medium text-pink-800">Administradora notificada</p>
-                        <p className="text-xs text-pink-600">✅ WhatsApp + Notificación enviados</p>
+                        <p className="text-xs text-pink-600">✅ Notificaciones enviadas</p>
                     </div>
                 </div>
             </div>

@@ -1,4 +1,4 @@
-// components/MyBookings.js - VERSIÓN CORREGIDA (SOLO RESERVAS DEL NEGOCIO ACTUAL)
+// components/MyBookings.js - VERSIÓN SIMPLIFICADA
 
 function MyBookings({ cliente, onVolver }) {
     const [bookings, setBookings] = React.useState([]);
@@ -6,101 +6,29 @@ function MyBookings({ cliente, onVolver }) {
     const [cancelando, setCancelando] = React.useState(false);
     const [filtro, setFiltro] = React.useState('activas');
     const [mensajeError, setMensajeError] = React.useState('');
-    const [telefonoDuenno, setTelefonoDuenno] = React.useState('53357234');
-    const [nombreNegocio, setNombreNegocio] = React.useState('');
-    const [ntfyTopic, setNtfyTopic] = React.useState('reservas');
     const [negocioId, setNegocioId] = React.useState(null);
-    const [datosCargados, setDatosCargados] = React.useState(false);
-    
-    // Estados para edición de perfil
-    const [editandoPerfil, setEditandoPerfil] = React.useState(false);
-    const [nuevoNombre, setNuevoNombre] = React.useState(cliente?.nombre || '');
-    const [guardandoPerfil, setGuardandoPerfil] = React.useState(false);
 
-    // ============================================
-    // FUNCIÓN PARA OBTENER EL NEGOCIO_ID
-    // ============================================
-    const obtenerNegocioId = () => {
-        // 1. Intentar desde localStorage
-        const localId = localStorage.getItem('negocioId');
-        if (localId) {
-            console.log('📌 MyBookings usando negocioId de localStorage:', localId);
-            return localId;
-        }
-        
-        // 2. Variable global de config-negocio.js
-        if (window.NEGOCIO_ID_POR_DEFECTO) {
-            console.log('📌 MyBookings usando NEGOCIO_ID_POR_DEFECTO:', window.NEGOCIO_ID_POR_DEFECTO);
-            return window.NEGOCIO_ID_POR_DEFECTO;
-        }
-        
-        // 3. Función global
-        if (typeof window.getNegocioId === 'function') {
-            const id = window.getNegocioId();
-            console.log('📌 MyBookings usando window.getNegocioId():', id);
-            return id;
-        }
-        
-        console.error('❌ No se pudo obtener negocioId en MyBookings');
-        return null;
-    };
-
+    // Obtener negocioId
     React.useEffect(() => {
-        const id = obtenerNegocioId();
+        const id = localStorage.getItem('negocioId') || window.NEGOCIO_ID_POR_DEFECTO;
         setNegocioId(id);
         console.log('🏢 MyBookings - Negocio ID:', id);
-        
-        cargarReservas();
-        cargarDatosNegocio();
     }, []);
 
-    const cargarDatosNegocio = async () => {
-        try {
-            console.log('📱 MyBookings - Cargando datos del negocio...');
-            const tel = await window.getTelefonoDuenno();
-            const nombre = await window.getNombreNegocio();
-            const topic = await window.getNtfyTopic();
-            
-            console.log('📱 Datos cargados:', { tel, nombre, topic });
-            
-            setTelefonoDuenno(tel);
-            setNombreNegocio(nombre);
-            setNtfyTopic(topic);
-            setDatosCargados(true);
-        } catch (error) {
-            console.error('Error cargando datos de negocio:', error);
+    React.useEffect(() => {
+        if (cliente?.whatsapp && negocioId) {
+            cargarReservas();
         }
-    };
+    }, [cliente, negocioId]);
 
     const cargarReservas = async () => {
         setLoading(true);
         setMensajeError('');
-        
-        const currentNegocioId = negocioId || obtenerNegocioId();
-        
-        if (!currentNegocioId) {
-            console.error('❌ No hay negocioId para cargar reservas');
-            setMensajeError('Error al identificar el negocio');
-            setLoading(false);
-            return;
-        }
-        
-        if (!cliente?.whatsapp) {
-            console.error('❌ No hay cliente.whatsapp');
-            setMensajeError('Error al identificar el cliente');
-            setLoading(false);
-            return;
-        }
-        
         try {
-            console.log('🔍 Buscando reservas para:', {
-                negocioId: currentNegocioId,
-                cliente: cliente.whatsapp
-            });
+            console.log('🔍 Buscando reservas para:', cliente.whatsapp, 'en negocio:', negocioId);
             
-            // 🔥 CONSULTA CORREGIDA: Filtra POR NEGOCIO Y POR CLIENTE
             const response = await fetch(
-                `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${currentNegocioId}&cliente_whatsapp=eq.${cliente.whatsapp}&order=fecha.desc,hora_inicio.desc`,
+                `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${negocioId}&cliente_whatsapp=eq.${cliente.whatsapp}&order=fecha.desc,hora_inicio.desc`,
                 {
                     headers: {
                         'apikey': window.SUPABASE_ANON_KEY,
@@ -111,13 +39,11 @@ function MyBookings({ cliente, onVolver }) {
             );
             
             if (!response.ok) {
-                const errorText = await response.text();
-                console.error('❌ Error en respuesta:', errorText);
                 throw new Error('Error al cargar reservas');
             }
             
             const data = await response.json();
-            console.log(`📋 Reservas encontradas para ${cliente.nombre} en este negocio:`, data.length, data);
+            console.log(`📋 Reservas encontradas:`, data.length);
             setBookings(Array.isArray(data) ? data : []);
             
         } catch (error) {
@@ -125,38 +51,6 @@ function MyBookings({ cliente, onVolver }) {
             setMensajeError('Error al cargar tus reservas');
         } finally {
             setLoading(false);
-        }
-    };
-
-    // ============================================
-    // FUNCIÓN PARA EDITAR PERFIL
-    // ============================================
-    const handleGuardarNombre = async () => {
-        if (!nuevoNombre.trim()) {
-            alert('El nombre no puede estar vacío');
-            return;
-        }
-        
-        setGuardandoPerfil(true);
-        try {
-            const exito = await window.actualizarNombreCliente(cliente.whatsapp, nuevoNombre);
-            if (exito) {
-                // Actualizar el objeto cliente
-                cliente.nombre = nuevoNombre;
-                
-                // Actualizar en localStorage
-                localStorage.setItem('clienteAuth', JSON.stringify(cliente));
-                
-                setEditandoPerfil(false);
-                alert('✅ Nombre actualizado correctamente');
-            } else {
-                alert('Error al actualizar el nombre');
-            }
-        } catch (error) {
-            console.error('Error actualizando nombre:', error);
-            alert('Error al actualizar');
-        } finally {
-            setGuardandoPerfil(false);
         }
     };
 
@@ -205,98 +99,6 @@ function MyBookings({ cliente, onVolver }) {
         }
     };
 
-    // NOTIFICAR POR WHATSAPP CUANDO UN CLIENTE CANCELA
-    const notificarCancelacionWhatsApp = (bookingData) => {
-        try {
-            const fechaConDia = window.formatFechaCompleta ? 
-                window.formatFechaCompleta(bookingData.fecha) : 
-                bookingData.fecha;
-            
-            const profesional = bookingData.profesional_nombre || bookingData.trabajador_nombre || 'No asignada';
-            
-            const mensaje = 
-`❌ *CANCELACIÓN DE CLIENTE - ${nombreNegocio}*
-
-👤 *Cliente:* ${bookingData.cliente_nombre}
-📱 *WhatsApp:* ${bookingData.cliente_whatsapp}
-💅 *Servicio:* ${bookingData.servicio}
-📅 *Fecha:* ${fechaConDia}
-⏰ *Hora:* ${formatTo12Hour(bookingData.hora_inicio)}
-👩‍🎨 *Profesional:* ${profesional}
-
-El cliente canceló su turno desde la app.`;
-
-            const telefonoLimpio = telefonoDuenno.replace(/\D/g, '');
-            const encodedText = encodeURIComponent(mensaje);
-            
-            console.log('📤 Enviando WhatsApp de cancelación a:', telefonoLimpio);
-            
-            const link = document.createElement('a');
-            link.href = `https://api.whatsapp.com/send?phone=${telefonoLimpio}&text=${encodedText}`;
-            link.target = '_blank';
-            link.rel = 'noopener noreferrer';
-            link.style.display = 'none';
-            document.body.appendChild(link);
-            link.click();
-            
-            setTimeout(() => {
-                document.body.removeChild(link);
-            }, 200);
-            
-            console.log('✅ WhatsApp de cancelación enviado');
-        } catch (error) {
-            console.error('Error enviando WhatsApp:', error);
-        }
-    };
-
-    // NOTIFICAR POR PUSH CUANDO UN CLIENTE CANCELA
-    const notificarCancelacionPush = (bookingData) => {
-        try {
-            const fechaConDia = window.formatFechaCompleta ? 
-                window.formatFechaCompleta(bookingData.fecha) : 
-                bookingData.fecha;
-            
-            const profesional = bookingData.profesional_nombre || bookingData.trabajador_nombre || 'No asignada';
-            
-            const mensajePush = 
-`CANCELACION DE CLIENTE
-
-Cliente: ${bookingData.cliente_nombre}
-WhatsApp: ${bookingData.cliente_whatsapp}
-Servicio: ${bookingData.servicio}
-Fecha: ${fechaConDia}
-Hora: ${formatTo12Hour(bookingData.hora_inicio)}
-Profesional: ${profesional}
-
-El cliente canceló su turno desde la app.`;
-
-            console.log('📤 Enviando push de cancelación a ntfy:', ntfyTopic);
-            
-            fetch(`https://ntfy.sh/${ntfyTopic}`, {
-                method: 'POST',
-                body: mensajePush,
-                headers: {
-                    'Title': `Cancelación - ${nombreNegocio}`,
-                    'Priority': 'default',
-                    'Tags': 'x'
-                }
-            })
-            .then(response => {
-                if (response.ok) {
-                    console.log('✅ Push de cancelación enviado a:', ntfyTopic);
-                } else {
-                    console.error('❌ Error en respuesta ntfy:', response.status);
-                }
-            })
-            .catch(error => {
-                console.error('❌ Error enviando notificación push:', error);
-            });
-            
-        } catch (error) {
-            console.error('Error enviando Push:', error);
-        }
-    };
-
     const handleCancelarReserva = async (id, bookingData) => {
         if (!puedeCancelar(bookingData.fecha, bookingData.hora_inicio)) {
             const fechaConDia = window.formatFechaCompleta ? 
@@ -305,11 +107,11 @@ El cliente canceló su turno desde la app.`;
             
             const mensaje = `❌ No puedes cancelar este turno porque faltan menos de 1 hora.
             
-📅 Tu turno es el ${fechaConDia} a las ${formatTo12Hour(bookingData.hora_inicio)}
+📅 Tu turno es el ${fechaConDia} a las ${window.formatTo12Hour ? window.formatTo12Hour(bookingData.hora_inicio) : bookingData.hora_inicio}
 
 ⏰ Solo se permiten cancelaciones con al menos 1 hora de anticipación.
 
-Si no puede asistir, contactanos por WhatsApp al +${telefonoDuenno}`;
+Si no puedes asistir, contactanos por WhatsApp al +53 53357234`;
             
             alert(mensaje);
             return;
@@ -319,18 +121,14 @@ Si no puede asistir, contactanos por WhatsApp al +${telefonoDuenno}`;
             window.formatFechaCompleta(bookingData.fecha) : 
             bookingData.fecha;
         
-        if (!confirm(`¿Estás segura que querés cancelar tu turno del ${fechaConDiaConfirm} a las ${formatTo12Hour(bookingData.hora_inicio)}?`)) {
+        if (!confirm(`¿Estás segura que querés cancelar tu turno del ${fechaConDiaConfirm} a las ${window.formatTo12Hour ? window.formatTo12Hour(bookingData.hora_inicio) : bookingData.hora_inicio}?`)) {
             return;
         }
         
         setCancelando(true);
-        
-        const currentNegocioId = negocioId || obtenerNegocioId();
-        
         try {
-            // 🔥 CANCELAR RESERVA FILTRANDO POR NEGOCIO
             const response = await fetch(
-                `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${currentNegocioId}&id=eq.${id}`,
+                `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${negocioId}&id=eq.${id}`,
                 {
                     method: 'PATCH',
                     headers: {
@@ -343,16 +141,14 @@ Si no puede asistir, contactanos por WhatsApp al +${telefonoDuenno}`;
             );
             
             if (!response.ok) {
-                const errorText = await response.text();
-                console.error('❌ Error al cancelar:', errorText);
                 throw new Error('Error al cancelar');
             }
             
-            // ENVIAR AMBAS NOTIFICACIONES
+            // Enviar notificaciones de cancelación
             console.log('📤 Enviando notificaciones de cancelación...');
-            notificarCancelacionWhatsApp(bookingData);
-            notificarCancelacionPush(bookingData);
-            console.log('✅ Ambas notificaciones de cancelación enviadas');
+            if (window.notificarCancelacion) {
+                window.notificarCancelacion(bookingData);
+            }
             
             alert('✅ Turno cancelado correctamente');
             await cargarReservas();
@@ -394,70 +190,17 @@ Si no puede asistir, contactanos por WhatsApp al +${telefonoDuenno}`;
             {/* Contenido */}
             <div className="max-w-3xl mx-auto px-4 py-6">
                 
-                {/* Info del cliente con opción de editar */}
+                {/* Info del cliente */}
                 <div className="bg-white/80 backdrop-blur-sm border border-pink-200 rounded-lg p-4 mb-6">
-                    {editandoPerfil ? (
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-pink-500 rounded-full flex items-center justify-center text-white font-bold">
-                                    {cliente.nombre.charAt(0)}
-                                </div>
-                                <input
-                                    type="text"
-                                    value={nuevoNombre}
-                                    onChange={(e) => setNuevoNombre(e.target.value)}
-                                    className="flex-1 px-3 py-2 border border-pink-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                                    placeholder="Tu nombre"
-                                    disabled={guardandoPerfil}
-                                />
-                            </div>
-                            <div className="flex gap-2 justify-end">
-                                <button
-                                    onClick={() => {
-                                        setEditandoPerfil(false);
-                                        setNuevoNombre(cliente.nombre);
-                                    }}
-                                    className="px-3 py-1 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-100"
-                                    disabled={guardandoPerfil}
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    onClick={handleGuardarNombre}
-                                    className="px-3 py-1 bg-pink-500 text-white rounded-lg hover:bg-pink-600 flex items-center gap-2"
-                                    disabled={guardandoPerfil}
-                                >
-                                    {guardandoPerfil ? (
-                                        <>
-                                            <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                                            Guardando...
-                                        </>
-                                    ) : (
-                                        'Guardar'
-                                    )}
-                                </button>
-                            </div>
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-pink-500 rounded-full flex items-center justify-center text-white font-bold">
+                            {cliente.nombre.charAt(0)}
                         </div>
-                    ) : (
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-pink-500 rounded-full flex items-center justify-center text-white font-bold">
-                                    {cliente.nombre.charAt(0)}
-                                </div>
-                                <div>
-                                    <p className="font-medium text-pink-800">{cliente.nombre}</p>
-                                    <p className="text-sm text-pink-600">{cliente.whatsapp}</p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => setEditandoPerfil(true)}
-                                className="text-pink-500 hover:text-pink-700 p-2 hover:bg-pink-50 rounded-full transition"
-                                title="Editar perfil"
-                            >
-                                ✏️
-                            </button>
+                        <div>
+                            <p className="font-medium text-pink-800">{cliente.nombre}</p>
+                            <p className="text-sm text-pink-600">{cliente.whatsapp}</p>
                         </div>
-                    )}
+                    </div>
                 </div>
 
                 {/* Mensaje de error si hay */}
@@ -513,7 +256,7 @@ Si no puede asistir, contactanos por WhatsApp al +${telefonoDuenno}`;
                 ) : reservasFiltradas.length === 0 ? (
                     <div className="text-center py-12 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-pink-200">
                         <div className="text-6xl mb-4">📅✨</div>
-                        <p className="text-pink-600 mb-2">No tenés reservas {filtro !== 'todas' ? filtro : ''} en {nombreNegocio}</p>
+                        <p className="text-pink-600 mb-2">No tenés reservas {filtro !== 'todas' ? filtro : ''}</p>
                         <button
                             onClick={onVolver}
                             className="text-pink-500 font-medium hover:underline"
@@ -565,7 +308,7 @@ Si no puede asistir, contactanos por WhatsApp al +${telefonoDuenno}`;
                                         <div className="grid grid-cols-2 gap-3 text-sm mb-4">
                                             <div className="flex items-center gap-2 text-pink-600">
                                                 <span className="text-pink-400">⏰</span>
-                                                <span>{formatTo12Hour(booking.hora_inicio)}</span>
+                                                <span>{window.formatTo12Hour ? window.formatTo12Hour(booking.hora_inicio) : booking.hora_inicio}</span>
                                             </div>
                                             <div className="flex items-center gap-2 text-pink-600">
                                                 <span className="text-pink-400">⏱️</span>
@@ -584,7 +327,7 @@ Si no puede asistir, contactanos por WhatsApp al +${telefonoDuenno}`;
                                                     ? 'bg-pink-50 text-pink-700 border border-pink-200' 
                                                     : 'bg-pink-100 text-pink-700 border border-pink-300'}
                                             `}>
-                                                <span className={puedeCancelarBooking ? '💡' : '⚠️'}></span>
+                                                <span>{puedeCancelarBooking ? '💡' : '⚠️'}</span>
                                                 <span>{tiempoRestante}</span>
                                             </div>
                                         )}
