@@ -50,21 +50,5 @@
       "sizes": "512x512",
       "type": "image/png"
     }
-  ],
-  "screenshots": [
-    {
-      "src": "/Studioisma.nails/screenshots/mobile.webp",
-      "sizes": "750x1334",
-      "type": "image/webp",
-      "form_factor": "narrow",
-      "label": "Pantalla de inicio en móvil"
-    },
-    {
-      "src": "/Studioisma.nails/screenshots/desktop.webp",
-      "sizes": "1280x800",
-      "type": "image/webp",
-      "form_factor": "wide",
-      "label": "Pantalla principal en escritorio"
-    }
   ]
 }
