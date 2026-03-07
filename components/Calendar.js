@@ -1,4 +1,4 @@
-// components/Calendar.js - Versión femenina
+// components/Calendar.js - VERSIÓN CORREGIDA (SIN BLOQUEO AUTOMÁTICO DE DOMINGOS)
 
 function Calendar({ onDateSelect, selectedDate, profesional }) {
     const [currentDate, setCurrentDate] = React.useState(new Date());
@@ -64,12 +64,14 @@ function Calendar({ onDateSelect, selectedDate, profesional }) {
         return false;
     };
 
-    const isSunday = (date) => {
-        return date.getDay() === 0;
-    };
+    // 🔥 ELIMINAMOS la función isSunday que bloqueaba automáticamente
+    // Ahora los domingos se rigen por la configuración del profesional
 
     const profesionalTrabajaEsteDia = (date) => {
-        if (!profesional || diasLaborales.length === 0) return true;
+        if (!profesional) return true;
+        
+        // Si no hay configuración de días, asumimos que trabaja todos los días
+        if (diasLaborales.length === 0) return true;
         
         const diasSemana = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
         const diaSemana = diasSemana[date.getDay()];
@@ -97,10 +99,12 @@ function Calendar({ onDateSelect, selectedDate, profesional }) {
         
         const days = [];
         
+        // Días vacíos para alinear el calendario
         for (let i = 0; i < firstDay.getDay(); i++) {
             days.push(null);
         }
         
+        // Días del mes
         for (let i = 1; i <= lastDay.getDate(); i++) {
             days.push(new Date(year, month, i));
         }
@@ -150,14 +154,27 @@ function Calendar({ onDateSelect, selectedDate, profesional }) {
             
             <div className="bg-white/90 backdrop-blur-sm rounded-xl border-2 border-pink-200 shadow-sm overflow-hidden">
                 <div className="flex items-center justify-between p-4 bg-gradient-to-r from-pink-50 to-pink-100 border-b border-pink-200">
-                    <button onClick={prevMonth} className="p-2 hover:bg-white/50 rounded-full transition-colors text-pink-600">◀</button>
+                    <button 
+                        onClick={prevMonth} 
+                        className="p-2 hover:bg-white/50 rounded-full transition-colors text-pink-600"
+                        title="Mes anterior"
+                    >
+                        ◀
+                    </button>
                     <span className="font-bold text-pink-800 text-lg capitalize">
                         {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
                     </span>
-                    <button onClick={nextMonth} className="p-2 hover:bg-white/50 rounded-full transition-colors text-pink-600">▶</button>
+                    <button 
+                        onClick={nextMonth} 
+                        className="p-2 hover:bg-white/50 rounded-full transition-colors text-pink-600"
+                        title="Mes siguiente"
+                    >
+                        ▶
+                    </button>
                 </div>
 
                 <div className="p-4">
+                    {/* Días de la semana */}
                     <div className="grid grid-cols-7 mb-2 text-center">
                         {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((d, i) => (
                             <div key={i} className={`text-xs font-medium py-1 ${d === 'D' ? 'text-pink-400' : 'text-pink-600'}`}>
@@ -166,17 +183,22 @@ function Calendar({ onDateSelect, selectedDate, profesional }) {
                         ))}
                     </div>
                     
+                    {/* Días del mes */}
                     <div className="grid grid-cols-7 gap-1">
                         {days.map((date, idx) => {
                             if (!date) return <div key={idx} className="h-10" />;
 
                             const dateStr = formatDate(date);
                             const past = isPastDate(date);
-                            const sunday = isSunday(date);
                             const selected = selectedDate === dateStr;
                             
+                            // Verificar si el profesional trabaja este día
                             const profesionalTrabaja = profesionalTrabajaEsteDia(date);
-                            const available = !past && !sunday && profesionalTrabaja;
+                            
+                            // 🔥 AHORA disponible depende SOLO de:
+                            // - No sea fecha pasada
+                            // - El profesional trabaje este día (según configuración)
+                            const available = !past && profesionalTrabaja;
                             
                             let className = "h-10 w-full flex items-center justify-center rounded-lg text-sm font-medium transition-all relative";
                             
@@ -193,10 +215,11 @@ function Calendar({ onDateSelect, selectedDate, profesional }) {
                                 title = "Hoy ya no hay horarios disponibles";
                             } else if (past) {
                                 title = "Fecha pasada";
-                            } else if (sunday) {
-                                title = "Domingo cerrado";
                             } else if (!profesionalTrabaja && profesional) {
-                                title = `${profesional.nombre} no trabaja este día`;
+                                // Mostrar qué día no trabaja
+                                const diasSemana = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+                                const diaSemana = diasSemana[date.getDay()];
+                                title = `${profesional.nombre} no trabaja los ${diaSemana}s`;
                             } else {
                                 title = "Disponible";
                             }
@@ -220,6 +243,7 @@ function Calendar({ onDateSelect, selectedDate, profesional }) {
                 </div>
             </div>
 
+            {/* Leyenda de disponibilidad */}
             {profesional && (
                 <div className="text-xs text-pink-600 bg-pink-50 p-3 rounded-lg border border-pink-200">
                     <div className="flex items-center gap-2">
@@ -228,8 +252,14 @@ function Calendar({ onDateSelect, selectedDate, profesional }) {
                             <strong>Días que trabaja {profesional.nombre}:</strong>{' '}
                             {diasLaborales.length > 0 
                                 ? diasLaborales.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')
-                                : 'No hay configuración (todos los días disponibles)'}
+                                : 'Todos los días (sin configuración específica)'}
                         </span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                        <span className="w-3 h-3 bg-pink-500 rounded-full"></span>
+                        <span>Disponible</span>
+                        <span className="w-3 h-3 bg-pink-200 rounded-full ml-3"></span>
+                        <span>No disponible</span>
                     </div>
                 </div>
             )}
