@@ -75,7 +75,7 @@ window.notificarNuevaReserva = function(booking) {
 ✅ Reserva confirmada automáticamente. 💖`;
 
         // Número fijo de la dueña (Studioisma.nails)
-        const telefonoDuenno = "53357234";
+        const telefonoDuenno = "54646800";
         
         // Enviar WhatsApp
         window.enviarWhatsApp(telefonoDuenno, mensaje);
@@ -123,7 +123,7 @@ window.notificarCancelacion = function(booking) {
 
 El cliente canceló su turno desde la app.`;
 
-        const telefonoDuenno = "53357234";
+        const telefonoDuenno = "54646800";
         
         // Enviar WhatsApp
         window.enviarWhatsApp(telefonoDuenno, mensaje);

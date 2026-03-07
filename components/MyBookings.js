@@ -111,7 +111,7 @@ function MyBookings({ cliente, onVolver }) {
 
 ⏰ Solo se permiten cancelaciones con al menos 1 hora de anticipación.
 
-Si no puedes asistir, contactanos por WhatsApp al +53 53357234`;
+Si no puedes asistir, contactanos por WhatsApp al +53 54646800`;
             
             alert(mensaje);
             return;

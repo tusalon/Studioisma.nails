@@ -2,7 +2,7 @@
 
 function Confirmation({ booking, onReset }) {
     const [notificacionesEnviadas, setNotificacionesEnviadas] = React.useState(false);
-    const [telefonoDuenno, setTelefonoDuenno] = React.useState('53357234');
+    const [telefonoDuenno, setTelefonoDuenno] = React.useState('54646800');
     const [nombreNegocio, setNombreNegocio] = React.useState('Studioisma.nails');
 
     React.useEffect(() => {

@@ -1096,7 +1096,7 @@ El administrador cancelo la reserva.`;
                                                 setNuevaReservaData({...nuevaReservaData, cliente_whatsapp: value});
                                             }}
                                             className="w-full px-4 py-2 rounded-r-lg border border-gray-300"
-                                            placeholder="53357234"
+                                            placeholder="54646800"
                                         />
                                     </div>
                                     <p className="text-xs text-gray-400 mt-1">8 dígitos después del +53</p>
