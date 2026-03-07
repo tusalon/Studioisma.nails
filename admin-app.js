@@ -1,4 +1,4 @@
-// admin-app.js - Panel de administración (VERSIÓN CORREGIDA CON WHATSAPP PARA iOS)
+// admin-app.js - Panel de administración (VERSIÓN CORREGIDA CON WHATSAPP GLOBAL)
 // CLIENTE: Studioisma.nails
 
 console.log('🚀 ADMIN-APP.JS VERSIÓN CORREGIDA - Studioisma.nails');
@@ -23,20 +23,17 @@ window.addEventListener('error', function(e) {
 // FUNCIÓN PARA OBTENER NEGOCIO_ID
 // ============================================
 function getNegocioId() {
-    // 1. Prioridad: localStorage (cuando el admin se loguea)
     const localId = localStorage.getItem('negocioId');
     if (localId) {
         console.log('📌 AdminApp usando negocioId de localStorage:', localId);
         return localId;
     }
     
-    // 2. Variable global de config-negocio.js
     if (window.NEGOCIO_ID_POR_DEFECTO) {
         console.log('📌 AdminApp usando NEGOCIO_ID_POR_DEFECTO:', window.NEGOCIO_ID_POR_DEFECTO);
         return window.NEGOCIO_ID_POR_DEFECTO;
     }
     
-    // 3. Función global
     if (typeof window.getNegocioId === 'function') {
         const id = window.getNegocioId();
         console.log('📌 AdminApp usando window.getNegocioId():', id);
@@ -51,9 +48,6 @@ function getNegocioId() {
 // FUNCIONES DE SUPABASE (CORREGIDAS CON FILTRO)
 // ============================================
 
-/**
- * Obtiene todas las reservas del negocio actual
- */
 async function getAllBookings() {
     try {
         const negocioId = getNegocioId();
@@ -87,9 +81,6 @@ async function getAllBookings() {
     }
 }
 
-/**
- * Cancela una reserva (solo si pertenece al negocio actual)
- */
 async function cancelBooking(id) {
     try {
         const negocioId = getNegocioId();
@@ -125,9 +116,6 @@ async function cancelBooking(id) {
     }
 }
 
-/**
- * Crea una nueva reserva (asignándole el negocio actual)
- */
 async function createBooking(bookingData) {
     try {
         const negocioId = getNegocioId();
@@ -136,7 +124,6 @@ async function createBooking(bookingData) {
             return { success: false, error: 'No hay negocioId' };
         }
         
-        // Asegurar que la reserva tenga el negocio_id
         const dataWithNegocio = {
             ...bookingData,
             negocio_id: negocioId
@@ -197,7 +184,6 @@ async function marcarTurnosCompletados() {
         console.log('📅 Fecha LOCAL actual:', hoy);
         console.log('🕐 Hora LOCAL actual:', `${horaActual}:${minutosActuales}`);
         
-        // Buscar turnos Reservados con fecha MENOR a hoy (días pasados)
         const responsePasados = await fetch(
             `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${negocioId}&estado=eq.Reservado&fecha=lt.${hoy}&select=id,fecha,hora_inicio,hora_fin,cliente_nombre,servicio,profesional_nombre`,
             {
@@ -215,7 +201,6 @@ async function marcarTurnosCompletados() {
         
         const turnosPasados = await responsePasados.json();
         
-        // Turnos de HOY que ya terminaron
         const responseHoy = await fetch(
             `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${negocioId}&estado=eq.Reservado&fecha=eq.${hoy}&select=id,fecha,hora_inicio,hora_fin,cliente_nombre,servicio,profesional_nombre`,
             {
@@ -308,49 +293,6 @@ const indiceToHoraLegible = (indice) => {
 };
 
 // ============================================
-// FUNCIÓN CORREGIDA PARA ENVIAR MENSAJE DE CANCELACIÓN POR WHATSAPP (iOS COMPATIBLE)
-// ============================================
-const enviarCancelacionWhatsApp = (bookingData) => {
-    try {
-        const fechaConDia = window.formatFechaCompleta ? 
-            window.formatFechaCompleta(bookingData.fecha) : 
-            bookingData.fecha;
-        
-        const mensaje = 
-`❌ *CANCELACIÓN DE TURNO*
-
-Hola *${bookingData.cliente_nombre}*, lamentamos informarte que tu turno ha sido cancelado.
-
-📅 *Fecha:* ${fechaConDia}
-⏰ *Hora:* ${formatTo12Hour(bookingData.hora_inicio)}
-💈 *Servicio:* ${bookingData.servicio}
-👩‍🎨 *Profesional:* ${bookingData.profesional_nombre || bookingData.trabajador_nombre || 'No asignado'}
-
-🔔 *Motivo:* Cancelación por administración
-
-📱 *¿Querés reprogramar?*
-Podés hacerlo desde la app
-
-Disculpá las molestias.`;
-
-        const telefono = bookingData.cliente_whatsapp.replace(/\D/g, '');
-        
-        // ✅ USAR LA FUNCIÓN UNIVERSAL (que funciona en iOS)
-        if (window.enviarWhatsApp) {
-            window.enviarWhatsApp(telefono, mensaje);
-        } else {
-            // Fallback
-            const encodedText = encodeURIComponent(mensaje);
-            window.open(`https://wa.me/${telefono}?text=${encodedText}`, '_blank');
-        }
-        
-        console.log('📤 Mensaje de cancelación enviado a:', telefono);
-    } catch (error) {
-        console.error('Error enviando mensaje de cancelación:', error);
-    }
-};
-
-// ============================================
 // COMPONENTE PRINCIPAL
 // ============================================
 function AdminApp() {
@@ -359,26 +301,21 @@ function AdminApp() {
     const [filterDate, setFilterDate] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState('activas');
     
-    // Detectar rol del usuario y nivel
     const [userRole, setUserRole] = React.useState('admin');
     const [userNivel, setUserNivel] = React.useState(3);
     const [profesional, setProfesional] = React.useState(null);
     const [nombreNegocio, setNombreNegocio] = React.useState('Mi Negocio');
     
-    // Estados para configuración del negocio
     const [config, setConfig] = React.useState(null);
     const [configVersion, setConfigVersion] = React.useState(0);
     
-    // Pestaña activa
     const [tabActivo, setTabActivo] = React.useState('reservas');
     
-    // Estados para clientes registrados
     const [showClientesRegistrados, setShowClientesRegistrados] = React.useState(false);
     const [clientesRegistrados, setClientesRegistrados] = React.useState([]);
     const [errorClientes, setErrorClientes] = React.useState('');
     const [cargandoClientes, setCargandoClientes] = React.useState(false);
 
-    // Modal para crear reserva manual
     const [showNuevaReservaModal, setShowNuevaReservaModal] = React.useState(false);
     const [nuevaReservaData, setNuevaReservaData] = React.useState({
         cliente_nombre: '',
@@ -442,7 +379,6 @@ function AdminApp() {
         }
     }, []);
 
-    // Cargar datos para el modal
     React.useEffect(() => {
         const cargarDatosModal = async () => {
             if (window.salonServicios) {
@@ -457,7 +393,6 @@ function AdminApp() {
         cargarDatosModal();
     }, []);
 
-    // Cargar días laborales cuando se selecciona profesional
     React.useEffect(() => {
         const cargarDiasLaborales = async () => {
             if (nuevaReservaData.profesional_id) {
@@ -475,9 +410,6 @@ function AdminApp() {
         cargarDiasLaborales();
     }, [nuevaReservaData.profesional_id]);
 
-    // ============================================
-    // FUNCIÓN PARA CARGAR HORARIOS DISPONIBLES
-    // ============================================
     React.useEffect(() => {
         const cargarHorarios = async () => {
             if (!nuevaReservaData.profesional_id || !nuevaReservaData.fecha || !nuevaReservaData.servicio) {
@@ -550,7 +482,6 @@ function AdminApp() {
         cargarHorarios();
     }, [nuevaReservaData.profesional_id, nuevaReservaData.fecha, nuevaReservaData.servicio, serviciosList]);
 
-    // Función para cargar disponibilidad de un mes completo
     const cargarDisponibilidadMes = async (fecha, profesionalId) => {
         if (!profesionalId) return;
         
@@ -685,9 +616,6 @@ function AdminApp() {
         }
     };
 
-    // ============================================
-    // FUNCIÓN PARA CREAR RESERVA MANUAL
-    // ============================================
     const handleCrearReservaManual = async () => {
         if (!nuevaReservaData.cliente_nombre || !nuevaReservaData.cliente_whatsapp || 
             !nuevaReservaData.servicio || !nuevaReservaData.profesional_id || 
@@ -819,7 +747,6 @@ function AdminApp() {
                 
                 await marcarTurnosCompletados();
                 
-                // Recargar después de marcar completados
                 if (userRole === 'profesional' && profesional) {
                     data = await window.getReservasPorProfesional?.(profesional.id, false) || [];
                 } else {
@@ -866,59 +793,27 @@ function AdminApp() {
     }, [userRole, userNivel, profesional]);
 
     // ============================================
-    // HANDLE CANCEL CORREGIDO (iOS COMPATIBLE)
+    // HANDLE CANCEL CORREGIDO - USA notificarCancelacion
     // ============================================
     const handleCancel = async (id, bookingData) => {
         if (!confirm(`¿Cancelar reserva de ${bookingData.cliente_nombre}?`)) return;
         
         const ok = await cancelBooking(id);
         if (ok) {
-            // ⚡ ENVIAR WHATSAPP INMEDIATAMENTE (sin async después)
-            enviarCancelacionWhatsApp(bookingData);
+            console.log('📤 Enviando notificaciones de cancelación por admin...');
             
-            // Notificar al dueño por NTFY
-            try {
-                const fechaConDia = window.formatFechaCompleta ? 
-                    window.formatFechaCompleta(bookingData.fecha) : 
-                    bookingData.fecha;
-                
-                const mensajeLimpio = 
-`CANCELACION POR ADMIN
-
-Cliente: ${bookingData.cliente_nombre}
-WhatsApp: ${bookingData.cliente_whatsapp}
-Servicio: ${bookingData.servicio}
-Fecha: ${fechaConDia}
-Hora: ${formatTo12Hour(bookingData.hora_inicio)}
-Profesional: ${bookingData.profesional_nombre || bookingData.trabajador_nombre || 'No asignado'}
-
-El administrador cancelo la reserva.`;
-
-                const ntfyTopic = await window.getNtfyTopic();
-                
-                fetch(`https://ntfy.sh/${ntfyTopic}`, {
-                    method: 'POST',
-                    body: mensajeLimpio,
-                    headers: {
-                        'Title': 'Cancelacion por admin',
-                        'Priority': 'default',
-                        'Tags': 'x'
-                    }
-                })
-                .then(response => {
-                    if (response.ok) {
-                        console.log('✅ Notificación de cancelación enviada');
-                    }
-                })
-                .catch(error => {
-                    console.error('❌ Error enviando notificación:', error);
-                });
-                
-            } catch (error) {
-                console.error('Error enviando notificación:', error);
+            // Marcar que fue cancelado por admin
+            bookingData.cancelado_por = 'admin';
+            
+            // ÚNICA LLAMADA - notificarCancelacion ya maneja:
+            // - WhatsApp al cliente
+            // - WhatsApp a la dueña
+            // - ntfy push
+            if (window.notificarCancelacion) {
+                await window.notificarCancelacion(bookingData);
             }
             
-            alert('✅ Reserva cancelada y cliente notificado');
+            alert('✅ Reserva cancelada');
             fetchBookings();
         } else {
             alert('❌ Error al cancelar');

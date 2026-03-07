@@ -1,4 +1,4 @@
-// components/MyBookings.js - VERSIÓN CORREGIDA PARA iOS
+// components/MyBookings.js - VERSIÓN COMPLETA CORREGIDA
 
 function MyBookings({ cliente, onVolver }) {
     const [bookings, setBookings] = React.useState([]);
@@ -99,7 +99,7 @@ function MyBookings({ cliente, onVolver }) {
         }
     };
 
-    // ⚡ FUNCIÓN CORREGIDA PARA iOS
+    // FUNCIÓN CORREGIDA - USA notificarCancelacion
     const handleCancelarReserva = async (id, bookingData) => {
         if (!puedeCancelar(bookingData.fecha, bookingData.hora_inicio)) {
             const fechaConDia = window.formatFechaCompleta ? 
@@ -145,39 +145,14 @@ Si no puedes asistir, contactanos por WhatsApp al +53 54646800`;
                 throw new Error('Error al cancelar');
             }
             
-            // ⚡ ENVIAR WHATSAPP DE CANCELACIÓN INMEDIATAMENTE
             console.log('📤 Enviando notificaciones de cancelación...');
             
-            const fechaConDia = window.formatFechaCompleta ? 
-                window.formatFechaCompleta(bookingData.fecha) : 
-                bookingData.fecha;
+            // Marcar que fue cancelado por cliente
+            bookingData.cancelado_por = 'cliente';
             
-            const horaFormateada = window.formatTo12Hour ? 
-                window.formatTo12Hour(bookingData.hora_inicio) : 
-                bookingData.hora_inicio;
-            
-            const profesional = bookingData.profesional_nombre || bookingData.trabajador_nombre || 'No asignada';
-            
-            const mensajeCancelacion = 
-`❌ *CANCELACIÓN DE CLIENTE - Studioisma.nails*
-
-👤 *Cliente:* ${bookingData.cliente_nombre}
-📱 *WhatsApp:* ${bookingData.cliente_whatsapp}
-💅 *Servicio:* ${bookingData.servicio}
-📅 *Fecha:* ${fechaConDia}
-⏰ *Hora:* ${horaFormateada}
-👩‍🎨 *Profesional:* ${profesional}
-
-El cliente canceló su turno desde la app.`;
-
-            // Enviar WhatsApp
-            if (window.enviarWhatsApp) {
-                window.enviarWhatsApp("54646800", mensajeCancelacion);
-            }
-            
-            // Push notification
-            if (window.enviarPushCancelacion) {
-                window.enviarPushCancelacion(bookingData);
+            // ÚNICA LLAMADA - notificarCancelacion ya maneja WhatsApp al dueño + ntfy
+            if (window.notificarCancelacion) {
+                await window.notificarCancelacion(bookingData);
             }
             
             alert('✅ Turno cancelado correctamente');
