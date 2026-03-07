@@ -1,11 +1,11 @@
-// components/BookingForm.js - VERSIÓN CORREGIDA (archivo .ics funcional)
+// components/BookingForm.js - VERSIÓN COMPLETA CON RECORDATORIOS 24h y 1h
 
 function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cliente }) {
     const [submitting, setSubmitting] = React.useState(false);
     const [error, setError] = React.useState(null);
 
     // ============================================
-    // FUNCIÓN CORREGIDA PARA ARCHIVO .ICS
+    // FUNCIÓN PARA ARCHIVO .ICS CON RECORDATORIOS
     // ============================================
     function generarArchivoCalendario(bookingData) {
         // Formato de fecha: YYYYMMDD
@@ -17,23 +17,47 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
         
         const fechaHora = fecha + 'T' + horaCompleta; // "20260309T080000"
         
-        // Calcular hora fin (1 hora después)
-        const horaInicio = parseInt(bookingData.hora_inicio.split(':')[0]);
-        const minInicio = bookingData.hora_inicio.split(':')[1];
-        const horaFin = horaInicio + 1;
-        const horaFinStr = horaFin.toString().padStart(2, '0') + minInicio + '00';
-        const fechaHoraFin = fecha + 'T' + horaFinStr;
+        // Calcular hora fin (usando la duración real)
+        let fechaHoraFin;
+        if (bookingData.hora_fin) {
+            const horaFinBase = bookingData.hora_fin.replace(':', '');
+            const horaFinCompleta = horaFinBase + '00';
+            fechaHoraFin = fecha + 'T' + horaFinCompleta;
+        } else {
+            // Si no hay hora_fin, sumar duración (1 hora por defecto)
+            const horaInicio = parseInt(bookingData.hora_inicio.split(':')[0]);
+            const minInicio = bookingData.hora_inicio.split(':')[1];
+            const horaFin = horaInicio + 1;
+            const horaFinStr = horaFin.toString().padStart(2, '0') + minInicio + '00';
+            fechaHoraFin = fecha + 'T' + horaFinStr;
+        }
         
-        // Mismo formato exacto que funcionó en la prueba manual
+        // Generar UID único
+        const uid = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}@studioisma.com`;
+        
+        // Crear el contenido con DOS recordatorios
         return `BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//Studioisma//ES
+PRODID:-//Studioisma//Recordatorios//ES
+CALSCALE:GREGORIAN
 BEGIN:VEVENT
-UID:${bookingData.id || Date.now()}@studioisma.com
+UID:${uid}
+DTSTAMP:${fecha}T${horaCompleta}
 DTSTART:${fechaHora}
 DTEND:${fechaHoraFin}
-SUMMARY:${bookingData.servicio}
-DESCRIPTION:Turno en Studioisma con ${bookingData.profesional_nombre || 'profesional'}
+SUMMARY:${bookingData.servicio} - Studioisma.nails
+DESCRIPTION:Profesional: ${bookingData.profesional_nombre || 'No asignada'}\\nDuración: ${bookingData.duracion || 60} minutos\\nWhatsApp: +53 ${bookingData.cliente_whatsapp}
+LOCATION:Studioisma.nails (consultar dirección por WhatsApp)
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:🔔 RECORDATORIO: Tu turno es MAÑANA
+TRIGGER:-P1D
+END:VALARM
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:🔔 RECORDATORIO: Tu turno es en 1 HORA
+TRIGGER:-PT1H
+END:VALARM
 END:VEVENT
 END:VCALENDAR`;
     }
@@ -100,9 +124,9 @@ END:VCALENDAR`;
             if (result.success && result.data) {
                 console.log('✅ Reserva creada exitosamente');
                 
-                // ===== GENERAR ARCHIVO DE CALENDARIO =====
+                // ===== GENERAR ARCHIVO DE CALENDARIO CON RECORDATORIOS =====
                 try {
-                    console.log('📅 Generando archivo de calendario...');
+                    console.log('📅 Generando archivo de calendario con recordatorios 24h y 1h...');
                     
                     // Generar contenido .ics
                     const icsContent = generarArchivoCalendario(result.data);
@@ -122,7 +146,7 @@ END:VCALENDAR`;
                     
                     // Mensaje al usuario
                     setTimeout(() => {
-                        alert('📅 Se ha descargado un archivo de calendario.\n\nÁbrelo para agregar el turno a tu agenda.');
+                        alert('📅 Se ha descargado un archivo de calendario.\n\nÁbrelo para agregar el turno a tu agenda con recordatorios automáticos:\n• 24 horas antes\n• 1 hora antes');
                     }, 500);
                     
                 } catch (icsError) {
