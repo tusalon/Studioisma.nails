@@ -1,8 +1,30 @@
-// components/BookingForm.js - VERSIÓN SIMPLIFICADA (fechas garantizadas)
+// components/BookingForm.js - VERSIÓN IPHONE (con estilos originales)
 
 function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cliente }) {
     const [submitting, setSubmitting] = React.useState(false);
     const [error, setError] = React.useState(null);
+
+    // ============================================
+    // FUNCIÓN PARA PARTIR LÍNEAS LARGAS (RFC 5545)
+    // ============================================
+    function partirLinea(texto, limite = 70) {
+        if (texto.length <= limite) return texto;
+        
+        let resultado = '';
+        let posicion = 0;
+        
+        while (posicion < texto.length) {
+            if (posicion === 0) {
+                resultado += texto.substring(posicion, posicion + limite) + '\n';
+                posicion += limite;
+            } else {
+                resultado += ' ' + texto.substring(posicion, posicion + limite - 1) + '\n';
+                posicion += limite - 1;
+            }
+        }
+        
+        return resultado.trim();
+    }
 
     // ============================================
     // GENERAR UUID
@@ -16,19 +38,12 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
     }
 
     // ============================================
-    // FORMATEAR FECHA UTC (SEGURA)
+    // FORMATEAR FECHA UTC
     // ============================================
     function formatearFechaUTC(fechaStr, horaStr) {
-        // Asegurar que tenemos valores válidos
-        if (!fechaStr || !horaStr) {
-            console.error('Faltan fecha u hora');
-            return '20260101T120000Z';
-        }
-        
         const [year, month, day] = fechaStr.split('-');
         const [hour, minute] = horaStr.split(':');
         
-        // Crear fecha UTC
         const fecha = new Date(Date.UTC(
             parseInt(year), 
             parseInt(month) - 1, 
@@ -37,12 +52,6 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
             parseInt(minute), 
             0
         ));
-        
-        // Verificar que la fecha es válida
-        if (isNaN(fecha.getTime())) {
-            console.error('Fecha inválida, usando valores por defecto');
-            return '20260101T120000Z';
-        }
         
         const yearStr = fecha.getUTCFullYear();
         const monthStr = String(fecha.getUTCMonth() + 1).padStart(2, '0');
@@ -51,40 +60,6 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
         const minuteStr = String(fecha.getUTCMinutes()).padStart(2, '0');
         
         return `${yearStr}${monthStr}${dayStr}T${hourStr2}${minuteStr}00Z`;
-    }
-
-    // ============================================
-    // FORMATEAR FECHA LEGIBLE (MÉTODO SEGURO)
-    // ============================================
-    function formatearFechaLegible(fechaStr, horaStr) {
-        if (!fechaStr || !horaStr) return 'Fecha no disponible';
-        
-        const [year, month, day] = fechaStr.split('-');
-        const [hour, minute] = horaStr.split(':');
-        
-        const fecha = new Date(Date.UTC(
-            parseInt(year), 
-            parseInt(month) - 1, 
-            parseInt(day), 
-            parseInt(hour), 
-            parseInt(minute), 
-            0
-        ));
-        
-        if (isNaN(fecha.getTime())) return 'Fecha no disponible';
-        
-        // Formato manual sin usar toLocaleString
-        const meses = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const dia = fecha.getUTCDate();
-        const mes = meses[fecha.getUTCMonth()];
-        const año = fecha.getUTCFullYear();
-        let horas = fecha.getUTCHours();
-        const minutos = fecha.getUTCMinutes().toString().padStart(2, '0');
-        const ampm = horas >= 12 ? 'PM' : 'AM';
-        horas = horas % 12;
-        horas = horas ? horas : 12;
-        
-        return `${dia} ${mes} ${año} ${horas}:${minutos} ${ampm}`;
     }
 
     // ============================================
@@ -106,12 +81,42 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
         const stampMin = String(ahora.getUTCMinutes()).padStart(2, '0');
         const dtstamp = `${stampYear}${stampMonth}${stampDay}T${stampHour}${stampMin}00`;
         
-        // Fechas legibles (garantizadas)
-        const fechaLegible = formatearFechaLegible(bookingData.fecha, bookingData.hora_inicio);
-        const fechaFinLegible = formatearFechaLegible(bookingData.fecha, bookingData.hora_fin);
+        // Fechas legibles
+        const fecha = new Date(bookingData.fecha + 'T' + bookingData.hora_inicio + ':00');
+        const fechaFin = new Date(bookingData.fecha + 'T' + bookingData.hora_fin + ':00');
         
-        // Descripción en UNA SOLA LÍNEA
-        const descripcion = `Appointment Details\\nWhen: ${fechaLegible} - ${fechaFinLegible}\\nService: ${bookingData.servicio}\\nProvider Name: ${bookingData.profesional_nombre}\\nClient: ${bookingData.cliente_nombre}\\nWhatsApp: +53 ${bookingData.cliente_whatsapp}\\n\\nStudioisma.nails`;
+        const meses = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        
+        // Fecha inicio
+        const dia = fecha.getDate();
+        const mes = meses[fecha.getMonth()];
+        const año = fecha.getFullYear();
+        let horas = fecha.getHours();
+        const minutos = fecha.getMinutes().toString().padStart(2, '0');
+        const ampm = horas >= 12 ? 'PM' : 'AM';
+        horas = horas % 12;
+        horas = horas ? horas : 12;
+        const fechaInicioStr = `${dia} ${mes} ${año} ${horas}:${minutos} ${ampm}`;
+        
+        // Fecha fin
+        let horasFin = fechaFin.getHours();
+        const minutosFin = fechaFin.getMinutes().toString().padStart(2, '0');
+        const ampmFin = horasFin >= 12 ? 'PM' : 'AM';
+        horasFin = horasFin % 12;
+        horasFin = horasFin ? horasFin : 12;
+        
+        // Crear descripción con líneas PARTIDAS
+        const linea1 = `Appointment Details`;
+        const linea2 = `When: ${fechaInicioStr} - ${horasFin}:${minutosFin} ${ampmFin} (CST)`;
+        const linea3 = `Service: ${bookingData.servicio}`;
+        const linea4 = `Provider Name: ${bookingData.profesional_nombre}`;
+        const linea5 = `Client: ${bookingData.cliente_nombre}`;
+        const linea6 = `WhatsApp: +53 ${bookingData.cliente_whatsapp}`;
+        const linea7 = ``;
+        const linea8 = `Studioisma.nails`;
+        
+        // Aplicar partición de líneas largas
+        const descripcion = `${partirLinea(linea1)}\n${partirLinea(linea2)}\n${partirLinea(linea3)}\n${partirLinea(linea4)}\n${partirLinea(linea5)}\n${partirLinea(linea6)}\n${linea7}\n${linea8}`;
         
         return `BEGIN:VCALENDAR
 VERSION:2.0
@@ -155,12 +160,12 @@ CLASS:PUBLIC
 BEGIN:VALARM
 TRIGGER:-P1D
 ACTION:DISPLAY
-DESCRIPTION:Reminder: Your appointment is TOMORROW
+DESCRIPTION:Reminder: Tomorrow
 END:VALARM
 BEGIN:VALARM
 TRIGGER:-PT1H
 ACTION:DISPLAY
-DESCRIPTION:Reminder: Your appointment is in 1 HOUR
+DESCRIPTION:Reminder: In 1 hour
 END:VALARM
 END:VEVENT
 END:VCALENDAR`;
@@ -189,7 +194,7 @@ END:VCALENDAR`;
     }
 
     // ============================================
-    // HANDLE SUBMIT
+    // HANDLE SUBMIT (CON ESTILOS ORIGINALES)
     // ============================================
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -222,8 +227,6 @@ END:VCALENDAR`;
                 estado: "Reservado"
             };
 
-            console.log('Booking data:', bookingData);
-
             const result = await createBooking(bookingData);
             
             if (result.success && result.data) {
@@ -231,7 +234,6 @@ END:VCALENDAR`;
                 
                 const icsContent = generarArchivoCalendario(result.data);
                 
-                // Crear nombre del archivo
                 const fechaSegura = result.data.fecha.replace(/-/g, '');
                 const horaSegura = result.data.hora_inicio.replace(':', '');
                 const nombreSeguro = result.data.cliente_nombre
@@ -241,10 +243,8 @@ END:VCALENDAR`;
                 
                 const nombreArchivo = `turno-${fechaSegura}-${horaSegura}-${nombreSeguro}.ics`;
                 
-                // Descargar
                 descargarArchivoICS(icsContent, nombreArchivo);
                 
-                // Notificaciones
                 if (window.notificarNuevaReserva) {
                     window.notificarNuevaReserva(result.data);
                 }
@@ -260,7 +260,7 @@ END:VCALENDAR`;
     };
 
     // ============================================
-    // RENDER
+    // RENDER (CON ESTILOS ORIGINALES COMPLETOS)
     // ============================================
     return (
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4 animate-fade-in">
@@ -276,9 +276,15 @@ END:VCALENDAR`;
                 </div>
 
                 <div className="space-y-4">
+                    {/* Resumen del turno */}
                     <div className="bg-gradient-to-r from-pink-50 to-pink-100 p-4 rounded-xl border border-pink-200 space-y-2">
                         <div className="flex items-center gap-3 text-pink-700">
-                            <span className="text-2xl">✨</span>
+                            <span className="text-2xl">
+                                {service.nombre.toLowerCase().includes('corte') ? '✂️' : 
+                                 service.nombre.toLowerCase().includes('uña') ? '💅' :
+                                 service.nombre.toLowerCase().includes('peinado') ? '💇‍♀️' :
+                                 service.nombre.toLowerCase().includes('maquillaje') ? '💄' : '✨'}
+                            </span>
                             <span className="font-medium">{service.nombre}</span>
                         </div>
                         
@@ -289,11 +295,11 @@ END:VCALENDAR`;
                         
                         <div className="flex items-center gap-3 text-pink-700">
                             <span className="text-2xl">📅</span>
-                            <span>{date}</span>
+                            <span>{window.formatFechaCompleta ? window.formatFechaCompleta(date) : date}</span>
                         </div>
                         <div className="flex items-center gap-3 text-pink-700">
                             <span className="text-2xl">⏰</span>
-                            <span>{time} ({service.duracion} min)</span>
+                            <span>{window.formatTo12Hour ? window.formatTo12Hour(time) : time} ({service.duracion} min)</span>
                         </div>
                     </div>
 
@@ -305,7 +311,8 @@ END:VCALENDAR`;
                         </div>
 
                         {error && (
-                            <div className="text-pink-600 text-sm bg-pink-100 p-3 rounded-lg">
+                            <div className="text-pink-600 text-sm bg-pink-100 p-3 rounded-lg flex items-start gap-2 border border-pink-300">
+                                <span className="text-pink-500">⚠️</span>
                                 {error}
                             </div>
                         )}
@@ -313,9 +320,20 @@ END:VCALENDAR`;
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="w-full bg-gradient-to-r from-pink-500 to-pink-600 text-white py-3.5 rounded-xl font-bold hover:from-pink-600 hover:to-pink-700 transition-colors disabled:opacity-70"
+                            className="w-full bg-gradient-to-r from-pink-500 to-pink-600 text-white py-3.5 rounded-xl font-bold hover:from-pink-600 hover:to-pink-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center gap-2 shadow-lg"
                         >
-                            {submitting ? 'Procesando...' : 'Confirmar Reserva'}
+                            {submitting ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
+                                    Procesando...
+                                </>
+                            ) : (
+                                <>
+                                    <span>💖</span>
+                                    Confirmar Reserva
+                                    <span>✨</span>
+                                </>
+                            )}
                         </button>
                     </form>
                 </div>
