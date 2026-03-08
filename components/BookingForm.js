@@ -1,84 +1,161 @@
-// components/BookingForm.js - VERSIÓN COMPLETA CON RECORDATORIOS 24h y 1h
+// components/BookingForm.js - VERSIÓN ADAPTADA DE SETMORE (funciona en iPhone)
 
 function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cliente }) {
     const [submitting, setSubmitting] = React.useState(false);
     const [error, setError] = React.useState(null);
 
     // ============================================
-    // FUNCIÓN PARA ARCHIVO .ICS CON RECORDATORIOS
+    // FUNCIÓN PARA GENERAR UID (UUID v4 simulado)
+    // ============================================
+    function generarUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0;
+            const v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+    // ============================================
+    // FUNCIÓN PARA FORMATEAR FECHA EN FORMATO SETMORE
+    // ============================================
+    function formatearFechaSetmore(fechaStr, horaStr) {
+        // fechaStr: "2026-03-25"
+        // horaStr: "08:00"
+        const [year, month, day] = fechaStr.split('-');
+        const [hour, minute] = horaStr.split(':');
+        
+        // Setmore usa: 20260220T140000Z (UTC)
+        const fecha = new Date(Date.UTC(
+            parseInt(year), 
+            parseInt(month) - 1, 
+            parseInt(day), 
+            parseInt(hour), 
+            parseInt(minute), 
+            0
+        ));
+        
+        return fecha.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    }
+
+    // ============================================
+    // FUNCIÓN PARA ARCHIVO .ICS (EXACTAMENTE COMO SETMORE)
     // ============================================
     function generarArchivoCalendario(bookingData) {
-        // Formato de fecha: YYYYMMDD
-        const fecha = bookingData.fecha.replace(/-/g, '');
+        const uid = generarUUID();
+        const dtstart = formatearFechaSetmore(bookingData.fecha, bookingData.hora_inicio);
         
-        // Formato de hora: HHMMSS (siempre 6 dígitos)
-        const horaBase = bookingData.hora_inicio.replace(':', ''); // "0800"
-        const horaCompleta = horaBase + '00'; // "080000"
+        // Calcular hora fin (sumar duración)
+        const fechaInicio = new Date(bookingData.fecha + 'T' + bookingData.hora_inicio + ':00');
+        const fechaFin = new Date(fechaInicio.getTime() + (bookingData.duracion || 60) * 60000);
         
-        const fechaHora = fecha + 'T' + horaCompleta; // "20260309T080000"
+        const yearFin = fechaFin.getUTCFullYear();
+        const monthFin = String(fechaFin.getUTCMonth() + 1).padStart(2, '0');
+        const dayFin = String(fechaFin.getUTCDate()).padStart(2, '0');
+        const hourFin = String(fechaFin.getUTCHours()).padStart(2, '0');
+        const minFin = String(fechaFin.getUTCMinutes()).padStart(2, '0');
+        const dtend = `${yearFin}${monthFin}${dayFin}T${hourFin}${minFin}00Z`;
         
-        // Calcular hora fin (usando la duración real)
-        let fechaHoraFin;
-        if (bookingData.hora_fin) {
-            const horaFinBase = bookingData.hora_fin.replace(':', '');
-            const horaFinCompleta = horaFinBase + '00';
-            fechaHoraFin = fecha + 'T' + horaFinCompleta;
-        } else {
-            // Si no hay hora_fin, sumar duración (1 hora por defecto)
-            const horaInicio = parseInt(bookingData.hora_inicio.split(':')[0]);
-            const minInicio = bookingData.hora_inicio.split(':')[1];
-            const horaFin = horaInicio + 1;
-            const horaFinStr = horaFin.toString().padStart(2, '0') + minInicio + '00';
-            fechaHoraFin = fecha + 'T' + horaFinStr;
-        }
+        const dtstamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
         
-        // Generar UID único
-        const uid = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}@studioisma.com`;
+        // Formatear fecha para descripción legible
+        const fechaLegible = new Date(bookingData.fecha + 'T' + bookingData.hora_inicio).toLocaleString('es-ES', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
         
-        // Crear el contenido con DOS recordatorios
         return `BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//Studioisma//Recordatorios//ES
-CALSCALE:GREGORIAN
+PRODID:-//Studioisma//Setmore//ES
+METHOD:REQUEST
+BEGIN:VTIMEZONE
+TZID:America/Havana
+TZURL:http://tzurl.org/zoneinfo-outlook/America/Havana
+X-LIC-LOCATION:America/Havana
+BEGIN:STANDARD
+TZOFFSETFROM:-0400
+TZOFFSETTO:-0500
+TZNAME:CST
+DTSTART:19701101T010000
+RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU
+END:STANDARD
+BEGIN:DAYLIGHT
+TZOFFSETFROM:-0500
+TZOFFSETTO:-0400
+TZNAME:CDT
+DTSTART:19700308T000000
+RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU
+END:DAYLIGHT
+END:VTIMEZONE
+X-WR-TIMEZONE:America/Havana
 BEGIN:VEVENT
 UID:${uid}
-DTSTAMP:${fecha}T${horaCompleta}
-DTSTART:${fechaHora}
-DTEND:${fechaHoraFin}
-SUMMARY:${bookingData.servicio} - Studioisma.nails
-DESCRIPTION:Profesional: ${bookingData.profesional_nombre || 'No asignada'}\\nDuración: ${bookingData.duracion || 60} minutos\\nWhatsApp: +53 ${bookingData.cliente_whatsapp}
-LOCATION:Studioisma.nails (consultar dirección por WhatsApp)
+SEQUENCE:0
+DTSTAMP:${dtstamp}
+DTSTART:${dtstart}
+DTEND:${dtend}
+SUMMARY:${bookingData.servicio} con ${bookingData.profesional_nombre}
+TRANSP:OPAQUE
+LOCATION:Studioisma.nails
+DESCRIPTION:Appointment Details\\nWhen: ${fechaLegible}\\nService: ${bookingData.servicio}\\nProvider: ${bookingData.profesional_nombre}\\nClient: ${bookingData.cliente_nombre}\\nWhatsApp: +53 ${bookingData.cliente_whatsapp}
+ORGANIZER;CN="Studioisma.nails":mailto:studioisma@gmail.com
+ATTENDEE;ROLE=CHAIR;CUTYPE=INDIVIDUAL;RSVP=FALSE;CN="Studioisma.nails":MAILTO:studioisma@gmail.com
+ATTENDEE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;RSVP=FALSE;CN="${bookingData.cliente_nombre}":MAILTO:cliente@email.com
+STATUS:CONFIRMED
+CLASS:PUBLIC
 BEGIN:VALARM
-ACTION:DISPLAY
-DESCRIPTION:🔔 RECORDATORIO: Tu turno es MAÑANA
 TRIGGER:-P1D
+ACTION:DISPLAY
+DESCRIPTION:Recordatorio: Tu turno es MAÑANA
 END:VALARM
 BEGIN:VALARM
-ACTION:DISPLAY
-DESCRIPTION:🔔 RECORDATORIO: Tu turno es en 1 HORA
 TRIGGER:-PT1H
+ACTION:DISPLAY
+DESCRIPTION:Recordatorio: Tu turno es en 1 HORA
 END:VALARM
 END:VEVENT
 END:VCALENDAR`;
     }
 
     // ============================================
-    // FUNCIÓN PARA DESCARGAR ARCHIVO
+    // FUNCIÓN PARA FORZAR DESCARGA (CORREGIDA)
     // ============================================
     function descargarArchivoICS(contenido, nombreArchivo) {
         try {
-            const blob = new Blob([contenido], { type: 'text/calendar;charset=utf-8' });
+            console.log('📥 Iniciando descarga...');
+            
+            // Usar application/octet-stream para FORZAR descarga
+            const blob = new Blob([contenido], { type: 'application/octet-stream' });
+            const url = window.URL.createObjectURL(blob);
+            
             const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
+            link.href = url;
             link.download = nombreArchivo;
+            
+            // IMPORTANTE: Agregar al DOM antes de hacer click
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            URL.revokeObjectURL(link.href);
-            console.log('✅ Archivo de calendario descargado:', nombreArchivo);
+            
+            window.URL.revokeObjectURL(url);
+            
+            console.log('✅ Descarga iniciada:', nombreArchivo);
             return true;
+            
         } catch (error) {
-            console.error('Error descargando archivo:', error);
+            console.error('❌ Error en descarga:', error);
+            
+            // Fallback con Data URI
+            try {
+                const dataUri = `data:application/octet-stream;charset=utf-8,${encodeURIComponent(contenido)}`;
+                window.open(dataUri, '_blank');
+            } catch (e) {
+                console.error('❌ Fallback falló:', e);
+            }
+            
             return false;
         }
     }
@@ -92,13 +169,12 @@ END:VCALENDAR`;
         setError(null);
 
         try {
-            // Verificar disponibilidad actualizada
             const bookings = await getBookingsByDateAndProfesional(date, profesional.id);
             const baseSlots = [time];
             const available = filterAvailableSlots(baseSlots, service.duracion, bookings);
 
             if (available.length === 0) {
-                setError("Ese horario ya no está disponible. Por favor elegí otro.");
+                setError("Ese horario ya no está disponible.");
                 setSubmitting(false);
                 return;
             }
@@ -118,20 +194,17 @@ END:VCALENDAR`;
                 estado: "Reservado"
             };
 
-            console.log('📤 Enviando reserva:', bookingData);
             const result = await createBooking(bookingData);
             
             if (result.success && result.data) {
-                console.log('✅ Reserva creada exitosamente');
+                console.log('✅ Reserva creada');
                 
-                // ===== GENERAR ARCHIVO DE CALENDARIO CON RECORDATORIOS =====
+                // ===== GENERAR Y DESCARGAR ARCHIVO =====
                 try {
-                    console.log('📅 Generando archivo de calendario con recordatorios 24h y 1h...');
+                    console.log('📅 Generando archivo ICS (formato Setmore)...');
                     
-                    // Generar contenido .ics
                     const icsContent = generarArchivoCalendario(result.data);
                     
-                    // Crear nombre del archivo
                     const fechaSegura = result.data.fecha.replace(/-/g, '');
                     const horaSegura = result.data.hora_inicio.replace(':', '');
                     const nombreSeguro = result.data.cliente_nombre
@@ -141,38 +214,30 @@ END:VCALENDAR`;
                     
                     const nombreArchivo = `turno-${fechaSegura}-${horaSegura}-${nombreSeguro}.ics`;
                     
-                    // Descargar archivo
+                    // DESCARGAR INMEDIATAMENTE
                     descargarArchivoICS(icsContent, nombreArchivo);
                     
-                    // Mensaje al usuario
-                    setTimeout(() => {
-                        alert('📅 Se ha descargado un archivo de calendario.\n\nÁbrelo para agregar el turno a tu agenda con recordatorios automáticos:\n• 24 horas antes\n• 1 hora antes');
-                    }, 500);
-                    
                 } catch (icsError) {
-                    console.error('Error generando archivo ICS:', icsError);
-                    // No interrumpimos el flujo principal si falla
+                    console.error('Error generando archivo:', icsError);
                 }
                 
-                // ===== NOTIFICACIONES WHATSAPP EXISTENTES =====
+                // ===== NOTIFICACIONES WHATSAPP =====
                 if (window.notificarNuevaReserva) {
-                    console.log('📤 Enviando notificaciones WhatsApp...');
                     window.notificarNuevaReserva(result.data);
                 }
                 
-                // Llamar al onSubmit original
                 onSubmit(result.data);
             }
         } catch (err) {
             console.error('Error:', err);
-            setError("Ocurrió un error al guardar la reserva. Intentá nuevamente.");
+            setError("Ocurrió un error al guardar la reserva.");
         } finally {
             setSubmitting(false);
         }
     };
 
     // ============================================
-    // RENDER (SIN CAMBIOS)
+    // RENDER
     // ============================================
     return (
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4 animate-fade-in">
@@ -188,15 +253,9 @@ END:VCALENDAR`;
                 </div>
 
                 <div className="space-y-4">
-                    {/* Resumen del turno */}
                     <div className="bg-gradient-to-r from-pink-50 to-pink-100 p-4 rounded-xl border border-pink-200 space-y-2">
                         <div className="flex items-center gap-3 text-pink-700">
-                            <span className="text-2xl">
-                                {service.nombre.toLowerCase().includes('corte') ? '✂️' : 
-                                 service.nombre.toLowerCase().includes('uña') ? '💅' :
-                                 service.nombre.toLowerCase().includes('peinado') ? '💇‍♀️' :
-                                 service.nombre.toLowerCase().includes('maquillaje') ? '💄' : '✨'}
-                            </span>
+                            <span className="text-2xl">✨</span>
                             <span className="font-medium">{service.nombre}</span>
                         </div>
                         
