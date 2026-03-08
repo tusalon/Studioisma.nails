@@ -1,15 +1,11 @@
-// components/BookingForm.js - VERSIÓN CORREGIDA (basada en Setmore para iPhone)
+// components/BookingForm.js - VERSIÓN CORREGIDA (descarga manual para todos)
 
 function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cliente }) {
     const [submitting, setSubmitting] = React.useState(false);
     const [error, setError] = React.useState(null);
-
-    // ============================================
-    // DETECTAR SI ES IPHONE
-    // ============================================
-    function esIPhone() {
-        return /iPhone|iPad|iPod/i.test(navigator.userAgent);
-    }
+    const [linkVisible, setLinkVisible] = React.useState(false);
+    const [downloadUrl, setDownloadUrl] = React.useState(null);
+    const [downloadFilename, setDownloadFilename] = React.useState('');
 
     // ============================================
     // FUNCIÓN PARA ARCHIVO .ICS (BASADA EN SETMORE)
@@ -38,7 +34,6 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
         const clienteNombre = bookingData.cliente_nombre || 'Cliente';
         const telefono = bookingData.cliente_whatsapp || '';
 
-        // Generar exactamente como Setmore
         return `BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//Studioisma//Recordatorios//ES
@@ -93,69 +88,35 @@ END:VCALENDAR`;
     }
 
     // ============================================
-    // FUNCIÓN MEJORADA PARA DESCARGAR (CON FALLBACKS)
+    // FUNCIÓN PARA PREPARAR DESCARGA (MANUAL PARA TODOS)
     // ============================================
-    function descargarArchivoICS(contenido, nombreArchivo) {
+    function prepararDescargaICS(contenido, nombreArchivo) {
         try {
-            // 1. Crear blob y URL
+            // Limpiar enlace anterior si existe
+            if (downloadUrl) {
+                URL.revokeObjectURL(downloadUrl);
+            }
+            
+            // Crear nuevo blob y URL
             const blob = new Blob([contenido], { type: 'text/calendar;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             
-            // 2. Detectar iPhone
-            if (esIPhone()) {
-                console.log('📱 iPhone detectado, usando método especial...');
-                
-                // En iPhone: crear enlace visible y sugerir "Guardar enlace"
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = nombreArchivo;
-                link.textContent = '📅 Toca aquí para descargar el recordatorio';
-                link.style.display = 'block';
-                link.style.padding = '15px';
-                link.style.margin = '10px 0';
-                link.style.backgroundColor = '#ec4899';
-                link.style.color = 'white';
-                link.style.textAlign = 'center';
-                link.style.borderRadius = '10px';
-                link.style.fontWeight = 'bold';
-                link.style.textDecoration = 'none';
-                
-                // Agregar al DOM temporalmente
-                document.body.appendChild(link);
-                
-                // Instrucciones adicionales
-                setTimeout(() => {
-                    alert('📱 En iPhone: Toca el enlace rosa y selecciona "Descargar archivo" o "Guardar en Archivos"');
-                }, 100);
-                
-                // Auto-remover después de 30 segundos
-                setTimeout(() => {
-                    if (link.parentNode) {
-                        link.parentNode.removeChild(link);
-                        URL.revokeObjectURL(url);
-                    }
-                }, 30000);
-                
-            } else {
-                // En Android/Desktop: método automático
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = nombreArchivo;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
-            }
+            // Guardar en estado
+            setDownloadUrl(url);
+            setDownloadFilename(nombreArchivo);
+            setLinkVisible(true);
             
-            return true;
+            console.log('✅ Enlace de descarga preparado');
+            
+            // Auto-ocultar después de 30 segundos
+            setTimeout(() => {
+                setLinkVisible(false);
+                if (url) URL.revokeObjectURL(url);
+            }, 30000);
             
         } catch (error) {
-            console.error('Error en descarga:', error);
-            
-            // Fallback: instrucciones manuales
-            alert('📅 No se pudo descargar automáticamente.\n\nPara guardar el recordatorio:\n1. Toca el botón "Compartir" (📤)\n2. Selecciona "Agregar a Notas"\n3. Guarda el archivo');
-            
-            return false;
+            console.error('Error preparando descarga:', error);
+            alert('❌ Error al preparar el archivo. Intenta de nuevo.');
         }
     }
 
@@ -168,13 +129,12 @@ END:VCALENDAR`;
         setError(null);
 
         try {
-            // Verificar disponibilidad actualizada
             const bookings = await getBookingsByDateAndProfesional(date, profesional.id);
             const baseSlots = [time];
             const available = filterAvailableSlots(baseSlots, service.duracion, bookings);
 
             if (available.length === 0) {
-                setError("Ese horario ya no está disponible. Por favor elegí otro.");
+                setError("Ese horario ya no está disponible.");
                 setSubmitting(false);
                 return;
             }
@@ -194,16 +154,13 @@ END:VCALENDAR`;
                 estado: "Reservado"
             };
 
-            console.log('📤 Enviando reserva:', bookingData);
             const result = await createBooking(bookingData);
             
             if (result.success && result.data) {
-                console.log('✅ Reserva creada exitosamente');
+                console.log('✅ Reserva creada');
                 
                 // ===== GENERAR ARCHIVO .ICS =====
                 try {
-                    console.log('📅 Generando archivo de calendario (formato Setmore)...');
-                    
                     const icsContent = generarArchivoCalendario(result.data);
                     
                     const fechaSegura = result.data.fecha.replace(/-/g, '');
@@ -215,32 +172,30 @@ END:VCALENDAR`;
                     
                     const nombreArchivo = `turno-${fechaSegura}-${horaSegura}-${nombreSeguro}.ics`;
                     
-                    descargarArchivoICS(icsContent, nombreArchivo);
+                    // PREPARAR (no auto-descargar)
+                    prepararDescargaICS(icsContent, nombreArchivo);
                     
                 } catch (icsError) {
-                    console.error('Error generando archivo ICS:', icsError);
-                    // No interrumpimos el flujo principal si falla
+                    console.error('Error generando ICS:', icsError);
                 }
                 
                 // ===== NOTIFICACIONES WHATSAPP =====
                 if (window.notificarNuevaReserva) {
-                    console.log('📤 Enviando notificaciones WhatsApp...');
                     window.notificarNuevaReserva(result.data);
                 }
                 
-                // Llamar al onSubmit original
                 onSubmit(result.data);
             }
         } catch (err) {
             console.error('Error:', err);
-            setError("Ocurrió un error al guardar la reserva. Intentá nuevamente.");
+            setError("Ocurrió un error al guardar la reserva.");
         } finally {
             setSubmitting(false);
         }
     };
 
     // ============================================
-    // RENDER (SIN CAMBIOS)
+    // RENDER (CON BOTÓN VISIBLE)
     // ============================================
     return (
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4 animate-fade-in">
@@ -256,15 +211,9 @@ END:VCALENDAR`;
                 </div>
 
                 <div className="space-y-4">
-                    {/* Resumen del turno */}
                     <div className="bg-gradient-to-r from-pink-50 to-pink-100 p-4 rounded-xl border border-pink-200 space-y-2">
                         <div className="flex items-center gap-3 text-pink-700">
-                            <span className="text-2xl">
-                                {service.nombre.toLowerCase().includes('corte') ? '✂️' : 
-                                 service.nombre.toLowerCase().includes('uña') ? '💅' :
-                                 service.nombre.toLowerCase().includes('peinado') ? '💇‍♀️' :
-                                 service.nombre.toLowerCase().includes('maquillaje') ? '💄' : '✨'}
-                            </span>
+                            <span className="text-2xl">✨</span>
                             <span className="font-medium">{service.nombre}</span>
                         </div>
                         
@@ -316,6 +265,31 @@ END:VCALENDAR`;
                             )}
                         </button>
                     </form>
+
+                    {/* ===== ENLACE DE DESCARGA VISIBLE ===== */}
+                    {linkVisible && downloadUrl && (
+                        <div className="mt-4 p-4 bg-green-50 rounded-lg border-2 border-green-300">
+                            <p className="text-sm text-green-700 mb-2">
+                                📅 Tu turno está listo. Toca el botón para descargar el recordatorio:
+                            </p>
+                            <a
+                                href={downloadUrl}
+                                download={downloadFilename}
+                                className="block w-full bg-green-600 text-white text-center py-3 px-4 rounded-lg font-bold hover:bg-green-700 transition-colors"
+                                onClick={() => {
+                                    setTimeout(() => {
+                                        setLinkVisible(false);
+                                        if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+                                    }, 5000);
+                                }}
+                            >
+                                📥 DESCARGAR RECORDATORIO
+                            </a>
+                            <p className="text-xs text-green-600 mt-2 text-center">
+                                (Este enlace expira en 30 segundos)
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
