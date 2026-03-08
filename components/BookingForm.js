@@ -1,4 +1,4 @@
-// components/BookingForm.js - VERSIÓN CORREGIDA (fechas funcionando)
+// components/BookingForm.js - VERSIÓN SIMPLIFICADA (fechas garantizadas)
 
 function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cliente }) {
     const [submitting, setSubmitting] = React.useState(false);
@@ -16,11 +16,48 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
     }
 
     // ============================================
-    // FORMATEAR FECHA SETMORE (CORREGIDO)
+    // FORMATEAR FECHA UTC (SEGURA)
     // ============================================
-    function formatearFechaSetmore(fechaStr, horaStr) {
-        // Si no hay hora, usar una hora por defecto
-        if (!horaStr) horaStr = '12:00';
+    function formatearFechaUTC(fechaStr, horaStr) {
+        // Asegurar que tenemos valores válidos
+        if (!fechaStr || !horaStr) {
+            console.error('Faltan fecha u hora');
+            return '20260101T120000Z';
+        }
+        
+        const [year, month, day] = fechaStr.split('-');
+        const [hour, minute] = horaStr.split(':');
+        
+        // Crear fecha UTC
+        const fecha = new Date(Date.UTC(
+            parseInt(year), 
+            parseInt(month) - 1, 
+            parseInt(day), 
+            parseInt(hour), 
+            parseInt(minute), 
+            0
+        ));
+        
+        // Verificar que la fecha es válida
+        if (isNaN(fecha.getTime())) {
+            console.error('Fecha inválida, usando valores por defecto');
+            return '20260101T120000Z';
+        }
+        
+        const yearStr = fecha.getUTCFullYear();
+        const monthStr = String(fecha.getUTCMonth() + 1).padStart(2, '0');
+        const dayStr = String(fecha.getUTCDate()).padStart(2, '0');
+        const hourStr2 = String(fecha.getUTCHours()).padStart(2, '0');
+        const minuteStr = String(fecha.getUTCMinutes()).padStart(2, '0');
+        
+        return `${yearStr}${monthStr}${dayStr}T${hourStr2}${minuteStr}00Z`;
+    }
+
+    // ============================================
+    // FORMATEAR FECHA LEGIBLE (MÉTODO SEGURO)
+    // ============================================
+    function formatearFechaLegible(fechaStr, horaStr) {
+        if (!fechaStr || !horaStr) return 'Fecha no disponible';
         
         const [year, month, day] = fechaStr.split('-');
         const [hour, minute] = horaStr.split(':');
@@ -34,55 +71,15 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
             0
         ));
         
-        // Verificar que la fecha es válida
-        if (isNaN(fecha.getTime())) {
-            console.error('Fecha inválida:', fechaStr, horaStr);
-            return '20260101T120000Z'; // Fecha por defecto
-        }
+        if (isNaN(fecha.getTime())) return 'Fecha no disponible';
         
-        const yearStr = fecha.getUTCFullYear();
-        const monthStr = String(fecha.getUTCMonth() + 1).padStart(2, '0');
-        const dayStr = String(fecha.getUTCDate()).padStart(2, '0');
-        const hourStr2 = String(fecha.getUTCHours()).padStart(2, '0');
-        const minuteStr = String(fecha.getUTCMinutes()).padStart(2, '0');
-        
-        return `${yearStr}${monthStr}${dayStr}T${hourStr2}${minuteStr}00Z`;
-    }
-
-    // ============================================
-    // CALCULAR HORA FIN (CORREGIDO)
-    // ============================================
-    function calcularHoraFin(horaInicio, duracionMinutos) {
-        const [hour, minute] = horaInicio.split(':').map(Number);
-        const fecha = new Date();
-        fecha.setHours(hour, minute, 0);
-        fecha.setMinutes(fecha.getMinutes() + duracionMinutos);
-        
-        const hourFin = String(fecha.getHours()).padStart(2, '0');
-        const minuteFin = String(fecha.getMinutes()).padStart(2, '0');
-        return `${hourFin}:${minuteFin}`;
-    }
-
-    // ============================================
-    // FECHA LEGIBLE SIN ACENTOS
-    // ============================================
-    function formatearFechaLegible(fechaStr, horaStr) {
-        const fecha = new Date(fechaStr + 'T' + horaStr + ':00');
-        
-        if (isNaN(fecha.getTime())) {
-            return 'Invalid Date';
-        }
-        
+        // Formato manual sin usar toLocaleString
         const meses = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const dias = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        
-        const diaSemana = dias[fecha.getDay()];
-        const dia = fecha.getDate();
-        const mes = meses[fecha.getMonth()];
-        const año = fecha.getFullYear();
-        
-        let horas = fecha.getHours();
-        const minutos = fecha.getMinutes().toString().padStart(2, '0');
+        const dia = fecha.getUTCDate();
+        const mes = meses[fecha.getUTCMonth()];
+        const año = fecha.getUTCFullYear();
+        let horas = fecha.getUTCHours();
+        const minutos = fecha.getUTCMinutes().toString().padStart(2, '0');
         const ampm = horas >= 12 ? 'PM' : 'AM';
         horas = horas % 12;
         horas = horas ? horas : 12;
@@ -91,21 +88,16 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
     }
 
     // ============================================
-    // GENERAR ARCHIVO .ICS (CORREGIDO)
+    // GENERAR ARCHIVO .ICS
     // ============================================
     function generarArchivoCalendario(bookingData) {
         const uid = generarUUID();
-        const dtstart = formatearFechaSetmore(bookingData.fecha, bookingData.hora_inicio);
         
-        // Calcular hora fin si no existe
-        let horaFin = bookingData.hora_fin;
-        if (!horaFin) {
-            horaFin = calcularHoraFin(bookingData.hora_inicio, bookingData.duracion || 60);
-        }
+        // Fechas UTC
+        const dtstart = formatearFechaUTC(bookingData.fecha, bookingData.hora_inicio);
+        const dtend = formatearFechaUTC(bookingData.fecha, bookingData.hora_fin);
         
-        const dtend = formatearFechaSetmore(bookingData.fecha, horaFin);
-        
-        // DTSTAMP
+        // Fecha del sistema
         const ahora = new Date();
         const stampYear = ahora.getUTCFullYear();
         const stampMonth = String(ahora.getUTCMonth() + 1).padStart(2, '0');
@@ -114,11 +106,12 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
         const stampMin = String(ahora.getUTCMinutes()).padStart(2, '0');
         const dtstamp = `${stampYear}${stampMonth}${stampDay}T${stampHour}${stampMin}00`;
         
-        // Fechas legibles
+        // Fechas legibles (garantizadas)
         const fechaLegible = formatearFechaLegible(bookingData.fecha, bookingData.hora_inicio);
-        const fechaFinLegible = formatearFechaLegible(bookingData.fecha, horaFin);
+        const fechaFinLegible = formatearFechaLegible(bookingData.fecha, bookingData.hora_fin);
         
-        const descripcion = `Appointment Details\nWhen: ${fechaLegible} - ${fechaFinLegible}\nService: ${bookingData.servicio}\nProvider Name: ${bookingData.profesional_nombre}\nClient: ${bookingData.cliente_nombre}\nWhatsApp: +53 ${bookingData.cliente_whatsapp}\n\nStudioisma.nails`;
+        // Descripción en UNA SOLA LÍNEA
+        const descripcion = `Appointment Details\\nWhen: ${fechaLegible} - ${fechaFinLegible}\\nService: ${bookingData.servicio}\\nProvider Name: ${bookingData.profesional_nombre}\\nClient: ${bookingData.cliente_nombre}\\nWhatsApp: +53 ${bookingData.cliente_whatsapp}\\n\\nStudioisma.nails`;
         
         return `BEGIN:VCALENDAR
 VERSION:2.0
@@ -180,17 +173,13 @@ END:VCALENDAR`;
         try {
             const blob = new Blob([contenido], { type: 'text/calendar;charset=utf-8' });
             const url = window.URL.createObjectURL(blob);
-            
             const link = document.createElement('a');
             link.href = url;
             link.download = nombreArchivo;
-            
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            
             window.URL.revokeObjectURL(url);
-            
             console.log('✅ Archivo descargado');
             return true;
         } catch (error) {
@@ -240,9 +229,9 @@ END:VCALENDAR`;
             if (result.success && result.data) {
                 console.log('✅ Reserva creada');
                 
-                // Usar los datos de la reserva (incluyendo hora_fin)
                 const icsContent = generarArchivoCalendario(result.data);
                 
+                // Crear nombre del archivo
                 const fechaSegura = result.data.fecha.replace(/-/g, '');
                 const horaSegura = result.data.hora_inicio.replace(':', '');
                 const nombreSeguro = result.data.cliente_nombre
@@ -252,8 +241,10 @@ END:VCALENDAR`;
                 
                 const nombreArchivo = `turno-${fechaSegura}-${horaSegura}-${nombreSeguro}.ics`;
                 
+                // Descargar
                 descargarArchivoICS(icsContent, nombreArchivo);
                 
+                // Notificaciones
                 if (window.notificarNuevaReserva) {
                     window.notificarNuevaReserva(result.data);
                 }
@@ -298,11 +289,11 @@ END:VCALENDAR`;
                         
                         <div className="flex items-center gap-3 text-pink-700">
                             <span className="text-2xl">📅</span>
-                            <span>{window.formatFechaCompleta ? window.formatFechaCompleta(date) : date}</span>
+                            <span>{date}</span>
                         </div>
                         <div className="flex items-center gap-3 text-pink-700">
                             <span className="text-2xl">⏰</span>
-                            <span>{window.formatTo12Hour ? window.formatTo12Hour(time) : time} ({service.duracion} min)</span>
+                            <span>{time} ({service.duracion} min)</span>
                         </div>
                     </div>
 
@@ -314,8 +305,7 @@ END:VCALENDAR`;
                         </div>
 
                         {error && (
-                            <div className="text-pink-600 text-sm bg-pink-100 p-3 rounded-lg flex items-start gap-2 border border-pink-300">
-                                <span className="text-pink-500">⚠️</span>
+                            <div className="text-pink-600 text-sm bg-pink-100 p-3 rounded-lg">
                                 {error}
                             </div>
                         )}
@@ -323,20 +313,9 @@ END:VCALENDAR`;
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="w-full bg-gradient-to-r from-pink-500 to-pink-600 text-white py-3.5 rounded-xl font-bold hover:from-pink-600 hover:to-pink-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center gap-2 shadow-lg"
+                            className="w-full bg-gradient-to-r from-pink-500 to-pink-600 text-white py-3.5 rounded-xl font-bold hover:from-pink-600 hover:to-pink-700 transition-colors disabled:opacity-70"
                         >
-                            {submitting ? (
-                                <>
-                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
-                                    Procesando...
-                                </>
-                            ) : (
-                                <>
-                                    <span>💖</span>
-                                    Confirmar Reserva
-                                    <span>✨</span>
-                                </>
-                            )}
+                            {submitting ? 'Procesando...' : 'Confirmar Reserva'}
                         </button>
                     </form>
                 </div>
