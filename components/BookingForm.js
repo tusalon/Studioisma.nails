@@ -1,11 +1,11 @@
-// components/BookingForm.js - VERSIÓN ADAPTADA DE SETMORE (funciona en iPhone)
+// components/BookingForm.js - VERSIÓN CORREGIDA (exactamente como Setmore)
 
 function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cliente }) {
     const [submitting, setSubmitting] = React.useState(false);
     const [error, setError] = React.useState(null);
 
     // ============================================
-    // FUNCIÓN PARA GENERAR UID (UUID v4 simulado)
+    // FUNCIÓN PARA GENERAR UUID
     // ============================================
     function generarUUID() {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -16,15 +16,13 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
     }
 
     // ============================================
-    // FUNCIÓN PARA FORMATEAR FECHA EN FORMATO SETMORE
+    // FUNCIÓN PARA FORMATEAR FECHA SETMORE
     // ============================================
     function formatearFechaSetmore(fechaStr, horaStr) {
-        // fechaStr: "2026-03-25"
-        // horaStr: "08:00"
+        // Crear fecha en UTC
         const [year, month, day] = fechaStr.split('-');
         const [hour, minute] = horaStr.split(':');
         
-        // Setmore usa: 20260220T140000Z (UTC)
         const fecha = new Date(Date.UTC(
             parseInt(year), 
             parseInt(month) - 1, 
@@ -34,17 +32,24 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
             0
         ));
         
-        return fecha.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+        // Formato: 20260220T140000Z
+        const yearStr = fecha.getUTCFullYear();
+        const monthStr = String(fecha.getUTCMonth() + 1).padStart(2, '0');
+        const dayStr = String(fecha.getUTCDate()).padStart(2, '0');
+        const hourStr = String(fecha.getUTCHours()).padStart(2, '0');
+        const minuteStr = String(fecha.getUTCMinutes()).padStart(2, '0');
+        
+        return `${yearStr}${monthStr}${dayStr}T${hourStr}${minuteStr}00Z`;
     }
 
     // ============================================
-    // FUNCIÓN PARA ARCHIVO .ICS (EXACTAMENTE COMO SETMORE)
+    // FUNCIÓN PRINCIPAL - GENERA ICS
     // ============================================
     function generarArchivoCalendario(bookingData) {
         const uid = generarUUID();
         const dtstart = formatearFechaSetmore(bookingData.fecha, bookingData.hora_inicio);
         
-        // Calcular hora fin (sumar duración)
+        // Calcular fecha fin
         const fechaInicio = new Date(bookingData.fecha + 'T' + bookingData.hora_inicio + ':00');
         const fechaFin = new Date(fechaInicio.getTime() + (bookingData.duracion || 60) * 60000);
         
@@ -55,9 +60,16 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
         const minFin = String(fechaFin.getUTCMinutes()).padStart(2, '0');
         const dtend = `${yearFin}${monthFin}${dayFin}T${hourFin}${minFin}00Z`;
         
-        const dtstamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+        // Fecha del sistema para DTSTAMP
+        const ahora = new Date();
+        const stampYear = ahora.getUTCFullYear();
+        const stampMonth = String(ahora.getUTCMonth() + 1).padStart(2, '0');
+        const stampDay = String(ahora.getUTCDate()).padStart(2, '0');
+        const stampHour = String(ahora.getUTCHours()).padStart(2, '0');
+        const stampMin = String(ahora.getUTCMinutes()).padStart(2, '0');
+        const dtstamp = `${stampYear}${stampMonth}${stampDay}T${stampHour}${stampMin}00`;
         
-        // Formatear fecha para descripción legible
+        // Fecha legible para descripción (sin \n escapados)
         const fechaLegible = new Date(bookingData.fecha + 'T' + bookingData.hora_inicio).toLocaleString('es-ES', {
             weekday: 'long',
             year: 'numeric',
@@ -67,6 +79,10 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
             minute: '2-digit'
         });
         
+        // IMPORTANTE: Usar \n literal, NO \\n
+        const descripcion = `Appointment Details\nWhen: ${fechaLegible}\nService: ${bookingData.servicio}\nProvider: ${bookingData.profesional_nombre}\nClient: ${bookingData.cliente_nombre}\nWhatsApp: +53 ${bookingData.cliente_whatsapp}`;
+        
+        // Generar el archivo EXACTAMENTE como Setmore
         return `BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//Studioisma//Setmore//ES
@@ -100,7 +116,7 @@ DTEND:${dtend}
 SUMMARY:${bookingData.servicio} con ${bookingData.profesional_nombre}
 TRANSP:OPAQUE
 LOCATION:Studioisma.nails
-DESCRIPTION:Appointment Details\\nWhen: ${fechaLegible}\\nService: ${bookingData.servicio}\\nProvider: ${bookingData.profesional_nombre}\\nClient: ${bookingData.cliente_nombre}\\nWhatsApp: +53 ${bookingData.cliente_whatsapp}
+DESCRIPTION:${descripcion}
 ORGANIZER;CN="Studioisma.nails":mailto:studioisma@gmail.com
 ATTENDEE;ROLE=CHAIR;CUTYPE=INDIVIDUAL;RSVP=FALSE;CN="Studioisma.nails":MAILTO:studioisma@gmail.com
 ATTENDEE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;RSVP=FALSE;CN="${bookingData.cliente_nombre}":MAILTO:cliente@email.com
@@ -121,41 +137,27 @@ END:VCALENDAR`;
     }
 
     // ============================================
-    // FUNCIÓN PARA FORZAR DESCARGA (CORREGIDA)
+    // FUNCIÓN PARA DESCARGAR
     // ============================================
     function descargarArchivoICS(contenido, nombreArchivo) {
         try {
-            console.log('📥 Iniciando descarga...');
-            
-            // Usar application/octet-stream para FORZAR descarga
-            const blob = new Blob([contenido], { type: 'application/octet-stream' });
+            const blob = new Blob([contenido], { type: 'text/calendar;charset=utf-8' });
             const url = window.URL.createObjectURL(blob);
             
             const link = document.createElement('a');
             link.href = url;
             link.download = nombreArchivo;
             
-            // IMPORTANTE: Agregar al DOM antes de hacer click
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             
             window.URL.revokeObjectURL(url);
             
-            console.log('✅ Descarga iniciada:', nombreArchivo);
+            console.log('✅ Archivo descargado');
             return true;
-            
         } catch (error) {
-            console.error('❌ Error en descarga:', error);
-            
-            // Fallback con Data URI
-            try {
-                const dataUri = `data:application/octet-stream;charset=utf-8,${encodeURIComponent(contenido)}`;
-                window.open(dataUri, '_blank');
-            } catch (e) {
-                console.error('❌ Fallback falló:', e);
-            }
-            
+            console.error('Error:', error);
             return false;
         }
     }
@@ -199,29 +201,21 @@ END:VCALENDAR`;
             if (result.success && result.data) {
                 console.log('✅ Reserva creada');
                 
-                // ===== GENERAR Y DESCARGAR ARCHIVO =====
-                try {
-                    console.log('📅 Generando archivo ICS (formato Setmore)...');
-                    
-                    const icsContent = generarArchivoCalendario(result.data);
-                    
-                    const fechaSegura = result.data.fecha.replace(/-/g, '');
-                    const horaSegura = result.data.hora_inicio.replace(':', '');
-                    const nombreSeguro = result.data.cliente_nombre
-                        .toLowerCase()
-                        .replace(/\s+/g, '-')
-                        .replace(/[^a-z0-9-]/g, '');
-                    
-                    const nombreArchivo = `turno-${fechaSegura}-${horaSegura}-${nombreSeguro}.ics`;
-                    
-                    // DESCARGAR INMEDIATAMENTE
-                    descargarArchivoICS(icsContent, nombreArchivo);
-                    
-                } catch (icsError) {
-                    console.error('Error generando archivo:', icsError);
-                }
+                // Generar y descargar
+                const icsContent = generarArchivoCalendario(result.data);
                 
-                // ===== NOTIFICACIONES WHATSAPP =====
+                const fechaSegura = result.data.fecha.replace(/-/g, '');
+                const horaSegura = result.data.hora_inicio.replace(':', '');
+                const nombreSeguro = result.data.cliente_nombre
+                    .toLowerCase()
+                    .replace(/\s+/g, '-')
+                    .replace(/[^a-z0-9-]/g, '');
+                
+                const nombreArchivo = `turno-${fechaSegura}-${horaSegura}-${nombreSeguro}.ics`;
+                
+                descargarArchivoICS(icsContent, nombreArchivo);
+                
+                // Notificaciones WhatsApp
                 if (window.notificarNuevaReserva) {
                     window.notificarNuevaReserva(result.data);
                 }
