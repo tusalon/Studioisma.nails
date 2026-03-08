@@ -1,4 +1,4 @@
-// components/BookingForm.js - VERSIÓN FINAL (exactamente como Setmore)
+// components/BookingForm.js - VERSIÓN CORREGIDA (fechas funcionando)
 
 function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cliente }) {
     const [submitting, setSubmitting] = React.useState(false);
@@ -16,9 +16,12 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
     }
 
     // ============================================
-    // FORMATEAR FECHA SETMORE (SIN ACENTOS)
+    // FORMATEAR FECHA SETMORE (CORREGIDO)
     // ============================================
     function formatearFechaSetmore(fechaStr, horaStr) {
+        // Si no hay hora, usar una hora por defecto
+        if (!horaStr) horaStr = '12:00';
+        
         const [year, month, day] = fechaStr.split('-');
         const [hour, minute] = horaStr.split(':');
         
@@ -31,22 +34,45 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
             0
         ));
         
+        // Verificar que la fecha es válida
+        if (isNaN(fecha.getTime())) {
+            console.error('Fecha inválida:', fechaStr, horaStr);
+            return '20260101T120000Z'; // Fecha por defecto
+        }
+        
         const yearStr = fecha.getUTCFullYear();
         const monthStr = String(fecha.getUTCMonth() + 1).padStart(2, '0');
         const dayStr = String(fecha.getUTCDate()).padStart(2, '0');
-        const hourStr = String(fecha.getUTCHours()).padStart(2, '0');
+        const hourStr2 = String(fecha.getUTCHours()).padStart(2, '0');
         const minuteStr = String(fecha.getUTCMinutes()).padStart(2, '0');
         
-        return `${yearStr}${monthStr}${dayStr}T${hourStr}${minuteStr}00Z`;
+        return `${yearStr}${monthStr}${dayStr}T${hourStr2}${minuteStr}00Z`;
     }
 
     // ============================================
-    // FECHA LEGIBLE SIN ACENTOS (como Setmore)
+    // CALCULAR HORA FIN (CORREGIDO)
+    // ============================================
+    function calcularHoraFin(horaInicio, duracionMinutos) {
+        const [hour, minute] = horaInicio.split(':').map(Number);
+        const fecha = new Date();
+        fecha.setHours(hour, minute, 0);
+        fecha.setMinutes(fecha.getMinutes() + duracionMinutos);
+        
+        const hourFin = String(fecha.getHours()).padStart(2, '0');
+        const minuteFin = String(fecha.getMinutes()).padStart(2, '0');
+        return `${hourFin}:${minuteFin}`;
+    }
+
+    // ============================================
+    // FECHA LEGIBLE SIN ACENTOS
     // ============================================
     function formatearFechaLegible(fechaStr, horaStr) {
         const fecha = new Date(fechaStr + 'T' + horaStr + ':00');
         
-        // Meses en inglés SIN ACENTOS
+        if (isNaN(fecha.getTime())) {
+            return 'Invalid Date';
+        }
+        
         const meses = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         const dias = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         
@@ -55,7 +81,6 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
         const mes = meses[fecha.getMonth()];
         const año = fecha.getFullYear();
         
-        // Formato: "20 Feb 2026 9:00 AM"
         let horas = fecha.getHours();
         const minutos = fecha.getMinutes().toString().padStart(2, '0');
         const ampm = horas >= 12 ? 'PM' : 'AM';
@@ -66,22 +91,19 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
     }
 
     // ============================================
-    // GENERAR ARCHIVO .ICS (EXACTO A SETMORE)
+    // GENERAR ARCHIVO .ICS (CORREGIDO)
     // ============================================
     function generarArchivoCalendario(bookingData) {
         const uid = generarUUID();
         const dtstart = formatearFechaSetmore(bookingData.fecha, bookingData.hora_inicio);
         
-        // Calcular fecha fin
-        const fechaInicio = new Date(bookingData.fecha + 'T' + bookingData.hora_inicio + ':00');
-        const fechaFin = new Date(fechaInicio.getTime() + (bookingData.duracion || 60) * 60000);
+        // Calcular hora fin si no existe
+        let horaFin = bookingData.hora_fin;
+        if (!horaFin) {
+            horaFin = calcularHoraFin(bookingData.hora_inicio, bookingData.duracion || 60);
+        }
         
-        const yearFin = fechaFin.getUTCFullYear();
-        const monthFin = String(fechaFin.getUTCMonth() + 1).padStart(2, '0');
-        const dayFin = String(fechaFin.getUTCDate()).padStart(2, '0');
-        const hourFin = String(fechaFin.getUTCHours()).padStart(2, '0');
-        const minFin = String(fechaFin.getUTCMinutes()).padStart(2, '0');
-        const dtend = `${yearFin}${monthFin}${dayFin}T${hourFin}${minFin}00Z`;
+        const dtend = formatearFechaSetmore(bookingData.fecha, horaFin);
         
         // DTSTAMP
         const ahora = new Date();
@@ -92,15 +114,12 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
         const stampMin = String(ahora.getUTCMinutes()).padStart(2, '0');
         const dtstamp = `${stampYear}${stampMonth}${stampDay}T${stampHour}${stampMin}00`;
         
-        // Fecha legible SIN ACENTOS
+        // Fechas legibles
         const fechaLegible = formatearFechaLegible(bookingData.fecha, bookingData.hora_inicio);
-        const fechaFinLegible = formatearFechaLegible(bookingData.fecha, bookingData.hora_fin || 
-            (parseInt(bookingData.hora_inicio.split(':')[0]) + 1) + ':' + bookingData.hora_inicio.split(':')[1]);
+        const fechaFinLegible = formatearFechaLegible(bookingData.fecha, horaFin);
         
-        // IMPORTANTE: Usar \n literal, NO doble barra
         const descripcion = `Appointment Details\nWhen: ${fechaLegible} - ${fechaFinLegible}\nService: ${bookingData.servicio}\nProvider Name: ${bookingData.profesional_nombre}\nClient: ${bookingData.cliente_nombre}\nWhatsApp: +53 ${bookingData.cliente_whatsapp}\n\nStudioisma.nails`;
         
-        // Generar EXACTAMENTE como Setmore
         return `BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//Studioisma//Setmore//EN
@@ -214,11 +233,14 @@ END:VCALENDAR`;
                 estado: "Reservado"
             };
 
+            console.log('Booking data:', bookingData);
+
             const result = await createBooking(bookingData);
             
             if (result.success && result.data) {
                 console.log('✅ Reserva creada');
                 
+                // Usar los datos de la reserva (incluyendo hora_fin)
                 const icsContent = generarArchivoCalendario(result.data);
                 
                 const fechaSegura = result.data.fecha.replace(/-/g, '');
