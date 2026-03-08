@@ -1,11 +1,10 @@
-// components/BookingForm.js - VERSIÓN CORREGIDA (descarga manual para todos)
+// components/BookingForm.js - VERSIÓN CON DATA URI (funciona en todos lados)
 
 function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cliente }) {
     const [submitting, setSubmitting] = React.useState(false);
     const [error, setError] = React.useState(null);
-    const [linkVisible, setLinkVisible] = React.useState(false);
-    const [downloadUrl, setDownloadUrl] = React.useState(null);
-    const [downloadFilename, setDownloadFilename] = React.useState('');
+    const [downloadLink, setDownloadLink] = React.useState(null);
+    const [showDownload, setShowDownload] = React.useState(false);
 
     // ============================================
     // FUNCIÓN PARA ARCHIVO .ICS (BASADA EN SETMORE)
@@ -88,36 +87,12 @@ END:VCALENDAR`;
     }
 
     // ============================================
-    // FUNCIÓN PARA PREPARAR DESCARGA (MANUAL PARA TODOS)
+    // FUNCIÓN PARA CREAR DATA URI (UNIVERSAL)
     // ============================================
-    function prepararDescargaICS(contenido, nombreArchivo) {
-        try {
-            // Limpiar enlace anterior si existe
-            if (downloadUrl) {
-                URL.revokeObjectURL(downloadUrl);
-            }
-            
-            // Crear nuevo blob y URL
-            const blob = new Blob([contenido], { type: 'text/calendar;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            
-            // Guardar en estado
-            setDownloadUrl(url);
-            setDownloadFilename(nombreArchivo);
-            setLinkVisible(true);
-            
-            console.log('✅ Enlace de descarga preparado');
-            
-            // Auto-ocultar después de 30 segundos
-            setTimeout(() => {
-                setLinkVisible(false);
-                if (url) URL.revokeObjectURL(url);
-            }, 30000);
-            
-        } catch (error) {
-            console.error('Error preparando descarga:', error);
-            alert('❌ Error al preparar el archivo. Intenta de nuevo.');
-        }
+    function crearDataURI(contenido) {
+        // Codificar el contenido para URL
+        const encoded = encodeURIComponent(contenido);
+        return `data:text/calendar;charset=utf-8,${encoded}`;
     }
 
     // ============================================
@@ -127,6 +102,7 @@ END:VCALENDAR`;
         e.preventDefault();
         setSubmitting(true);
         setError(null);
+        setShowDownload(false);
 
         try {
             const bookings = await getBookingsByDateAndProfesional(date, profesional.id);
@@ -159,9 +135,10 @@ END:VCALENDAR`;
             if (result.success && result.data) {
                 console.log('✅ Reserva creada');
                 
-                // ===== GENERAR ARCHIVO .ICS =====
+                // ===== GENERAR ENLACE DE DESCARGA =====
                 try {
                     const icsContent = generarArchivoCalendario(result.data);
+                    const dataUri = crearDataURI(icsContent);
                     
                     const fechaSegura = result.data.fecha.replace(/-/g, '');
                     const horaSegura = result.data.hora_inicio.replace(':', '');
@@ -172,8 +149,8 @@ END:VCALENDAR`;
                     
                     const nombreArchivo = `turno-${fechaSegura}-${horaSegura}-${nombreSeguro}.ics`;
                     
-                    // PREPARAR (no auto-descargar)
-                    prepararDescargaICS(icsContent, nombreArchivo);
+                    setDownloadLink({ uri: dataUri, filename: nombreArchivo });
+                    setShowDownload(true);
                     
                 } catch (icsError) {
                     console.error('Error generando ICS:', icsError);
@@ -195,7 +172,7 @@ END:VCALENDAR`;
     };
 
     // ============================================
-    // RENDER (CON BOTÓN VISIBLE)
+    // RENDER
     // ============================================
     return (
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4 animate-fade-in">
@@ -266,27 +243,29 @@ END:VCALENDAR`;
                         </button>
                     </form>
 
-                    {/* ===== ENLACE DE DESCARGA VISIBLE ===== */}
-                    {linkVisible && downloadUrl && (
-                        <div className="mt-4 p-4 bg-green-50 rounded-lg border-2 border-green-300">
-                            <p className="text-sm text-green-700 mb-2">
-                                📅 Tu turno está listo. Toca el botón para descargar el recordatorio:
+                    {/* ===== ENLACE DE DESCARGA UNIVERSAL ===== */}
+                    {showDownload && downloadLink && (
+                        <div className="mt-4 p-4 bg-green-50 rounded-lg border-2 border-green-300 animate-pulse">
+                            <p className="text-sm text-green-700 mb-3 font-bold text-center">
+                                📅 ¡Turno confirmado!
+                            </p>
+                            <p className="text-sm text-green-600 mb-3 text-center">
+                                Toca el botón para guardar el recordatorio en tu calendario:
                             </p>
                             <a
-                                href={downloadUrl}
-                                download={downloadFilename}
-                                className="block w-full bg-green-600 text-white text-center py-3 px-4 rounded-lg font-bold hover:bg-green-700 transition-colors"
+                                href={downloadLink.uri}
+                                download={downloadLink.filename}
+                                className="block w-full bg-green-600 text-white text-center py-4 px-4 rounded-xl font-bold text-lg hover:bg-green-700 transition-colors shadow-lg"
                                 onClick={() => {
                                     setTimeout(() => {
-                                        setLinkVisible(false);
-                                        if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+                                        setShowDownload(false);
                                     }, 5000);
                                 }}
                             >
                                 📥 DESCARGAR RECORDATORIO
                             </a>
-                            <p className="text-xs text-green-600 mt-2 text-center">
-                                (Este enlace expira en 30 segundos)
+                            <p className="text-xs text-green-600 mt-3 text-center">
+                                (Al tocar, se descargará un archivo .ics. Ábrelo para agregar a tu calendario con recordatorios 24h y 1h antes)
                             </p>
                         </div>
                     )}
