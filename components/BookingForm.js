@@ -1,84 +1,160 @@
-// components/BookingForm.js - VERSIÓN COMPLETA CON RECORDATORIOS 24h y 1h
+// components/BookingForm.js - VERSIÓN CORREGIDA (basada en Setmore para iPhone)
 
 function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cliente }) {
     const [submitting, setSubmitting] = React.useState(false);
     const [error, setError] = React.useState(null);
 
     // ============================================
-    // FUNCIÓN PARA ARCHIVO .ICS CON RECORDATORIOS
+    // DETECTAR SI ES IPHONE
+    // ============================================
+    function esIPhone() {
+        return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    }
+
+    // ============================================
+    // FUNCIÓN PARA ARCHIVO .ICS (BASADA EN SETMORE)
     // ============================================
     function generarArchivoCalendario(bookingData) {
-        // Formato de fecha: YYYYMMDD
-        const fecha = bookingData.fecha.replace(/-/g, '');
+        // Generar UUID único
+        const uuid = crypto.randomUUID ? 
+            crypto.randomUUID() : 
+            `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         
-        // Formato de hora: HHMMSS (siempre 6 dígitos)
-        const horaBase = bookingData.hora_inicio.replace(':', ''); // "0800"
-        const horaCompleta = horaBase + '00'; // "080000"
+        // Fechas en formato UTC (con Z)
+        const fechaTurno = new Date(bookingData.fecha + 'T' + bookingData.hora_inicio + ':00');
+        const fechaFin = new Date(fechaTurno.getTime() + (bookingData.duracion || 60) * 60000);
         
-        const fechaHora = fecha + 'T' + horaCompleta; // "20260309T080000"
+        const formatUTC = (date) => {
+            return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+        };
         
-        // Calcular hora fin (usando la duración real)
-        let fechaHoraFin;
-        if (bookingData.hora_fin) {
-            const horaFinBase = bookingData.hora_fin.replace(':', '');
-            const horaFinCompleta = horaFinBase + '00';
-            fechaHoraFin = fecha + 'T' + horaFinCompleta;
-        } else {
-            // Si no hay hora_fin, sumar duración (1 hora por defecto)
-            const horaInicio = parseInt(bookingData.hora_inicio.split(':')[0]);
-            const minInicio = bookingData.hora_inicio.split(':')[1];
-            const horaFin = horaInicio + 1;
-            const horaFinStr = horaFin.toString().padStart(2, '0') + minInicio + '00';
-            fechaHoraFin = fecha + 'T' + horaFinStr;
-        }
+        const dtstart = formatUTC(fechaTurno);
+        const dtend = formatUTC(fechaFin);
+        const dtstamp = formatUTC(new Date());
         
-        // Generar UID único
-        const uid = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}@studioisma.com`;
-        
-        // Crear el contenido con DOS recordatorios
+        // Datos
+        const servicio = bookingData.servicio || 'Turno';
+        const profesional = bookingData.profesional_nombre || 'Profesional';
+        const clienteNombre = bookingData.cliente_nombre || 'Cliente';
+        const telefono = bookingData.cliente_whatsapp || '';
+
+        // Generar exactamente como Setmore
         return `BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//Studioisma//Recordatorios//ES
-CALSCALE:GREGORIAN
+METHOD:REQUEST
+BEGIN:VTIMEZONE
+TZID:America/Havana
+TZURL:http://tzurl.org/zoneinfo-outlook/America/Havana
+X-LIC-LOCATION:America/Havana
+BEGIN:STANDARD
+TZOFFSETFROM:-0400
+TZOFFSETTO:-0500
+TZNAME:CST
+DTSTART:19701101T010000
+RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU
+END:STANDARD
+BEGIN:DAYLIGHT
+TZOFFSETFROM:-0500
+TZOFFSETTO:-0400
+TZNAME:CDT
+DTSTART:19700308T000000
+RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU
+END:DAYLIGHT
+END:VTIMEZONE
+X-WR-TIMEZONE:America/Havana
 BEGIN:VEVENT
-UID:${uid}
-DTSTAMP:${fecha}T${horaCompleta}
-DTSTART:${fechaHora}
-DTEND:${fechaHoraFin}
-SUMMARY:${bookingData.servicio} - Studioisma.nails
-DESCRIPTION:Profesional: ${bookingData.profesional_nombre || 'No asignada'}\\nDuración: ${bookingData.duracion || 60} minutos\\nWhatsApp: +53 ${bookingData.cliente_whatsapp}
-LOCATION:Studioisma.nails (consultar dirección por WhatsApp)
+UID:${uuid}
+SEQUENCE:0
+DTSTAMP:${dtstamp}
+DTSTART:${dtstart}
+DTEND:${dtend}
+SUMMARY:${servicio} con ${profesional}
+TRANSP:OPAQUE
+LOCATION:Studioisma.nails
+DESCRIPTION:Appointment Details\\nWhen: ${new Date(fechaTurno).toLocaleString()}\\nService: ${servicio}\\nProvider: ${profesional}\\nClient: ${clienteNombre}\\nWhatsApp: +${telefono}
+ORGANIZER;CN="Studioisma.nails":mailto:studioisma@gmail.com
+ATTENDEE;ROLE=CHAIR;CUTYPE=INDIVIDUAL;RSVP=FALSE;CN="Studioisma.nails":MAILTO:studioisma@gmail.com
+ATTENDEE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;RSVP=FALSE;CN="${clienteNombre}":MAILTO:cliente@email.com
+STATUS:CONFIRMED
+CLASS:PUBLIC
 BEGIN:VALARM
-ACTION:DISPLAY
-DESCRIPTION:🔔 RECORDATORIO: Tu turno es MAÑANA
 TRIGGER:-P1D
+ACTION:DISPLAY
+DESCRIPTION:Recordatorio: Tu turno es MAÑANA
 END:VALARM
 BEGIN:VALARM
-ACTION:DISPLAY
-DESCRIPTION:🔔 RECORDATORIO: Tu turno es en 1 HORA
 TRIGGER:-PT1H
+ACTION:DISPLAY
+DESCRIPTION:Recordatorio: Tu turno es en 1 HORA
 END:VALARM
 END:VEVENT
 END:VCALENDAR`;
     }
 
     // ============================================
-    // FUNCIÓN PARA DESCARGAR ARCHIVO
+    // FUNCIÓN MEJORADA PARA DESCARGAR (CON FALLBACKS)
     // ============================================
     function descargarArchivoICS(contenido, nombreArchivo) {
         try {
+            // 1. Crear blob y URL
             const blob = new Blob([contenido], { type: 'text/calendar;charset=utf-8' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = nombreArchivo;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(link.href);
-            console.log('✅ Archivo de calendario descargado:', nombreArchivo);
+            const url = URL.createObjectURL(blob);
+            
+            // 2. Detectar iPhone
+            if (esIPhone()) {
+                console.log('📱 iPhone detectado, usando método especial...');
+                
+                // En iPhone: crear enlace visible y sugerir "Guardar enlace"
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = nombreArchivo;
+                link.textContent = '📅 Toca aquí para descargar el recordatorio';
+                link.style.display = 'block';
+                link.style.padding = '15px';
+                link.style.margin = '10px 0';
+                link.style.backgroundColor = '#ec4899';
+                link.style.color = 'white';
+                link.style.textAlign = 'center';
+                link.style.borderRadius = '10px';
+                link.style.fontWeight = 'bold';
+                link.style.textDecoration = 'none';
+                
+                // Agregar al DOM temporalmente
+                document.body.appendChild(link);
+                
+                // Instrucciones adicionales
+                setTimeout(() => {
+                    alert('📱 En iPhone: Toca el enlace rosa y selecciona "Descargar archivo" o "Guardar en Archivos"');
+                }, 100);
+                
+                // Auto-remover después de 30 segundos
+                setTimeout(() => {
+                    if (link.parentNode) {
+                        link.parentNode.removeChild(link);
+                        URL.revokeObjectURL(url);
+                    }
+                }, 30000);
+                
+            } else {
+                // En Android/Desktop: método automático
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = nombreArchivo;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }
+            
             return true;
+            
         } catch (error) {
-            console.error('Error descargando archivo:', error);
+            console.error('Error en descarga:', error);
+            
+            // Fallback: instrucciones manuales
+            alert('📅 No se pudo descargar automáticamente.\n\nPara guardar el recordatorio:\n1. Toca el botón "Compartir" (📤)\n2. Selecciona "Agregar a Notas"\n3. Guarda el archivo');
+            
             return false;
         }
     }
@@ -124,14 +200,12 @@ END:VCALENDAR`;
             if (result.success && result.data) {
                 console.log('✅ Reserva creada exitosamente');
                 
-                // ===== GENERAR ARCHIVO DE CALENDARIO CON RECORDATORIOS =====
+                // ===== GENERAR ARCHIVO .ICS =====
                 try {
-                    console.log('📅 Generando archivo de calendario con recordatorios 24h y 1h...');
+                    console.log('📅 Generando archivo de calendario (formato Setmore)...');
                     
-                    // Generar contenido .ics
                     const icsContent = generarArchivoCalendario(result.data);
                     
-                    // Crear nombre del archivo
                     const fechaSegura = result.data.fecha.replace(/-/g, '');
                     const horaSegura = result.data.hora_inicio.replace(':', '');
                     const nombreSeguro = result.data.cliente_nombre
@@ -141,20 +215,14 @@ END:VCALENDAR`;
                     
                     const nombreArchivo = `turno-${fechaSegura}-${horaSegura}-${nombreSeguro}.ics`;
                     
-                    // Descargar archivo
                     descargarArchivoICS(icsContent, nombreArchivo);
-                    
-                    // Mensaje al usuario
-                    setTimeout(() => {
-                        alert('📅 Se ha descargado un archivo de calendario.\n\nÁbrelo para agregar el turno a tu agenda con recordatorios automáticos:\n• 24 horas antes\n• 1 hora antes');
-                    }, 500);
                     
                 } catch (icsError) {
                     console.error('Error generando archivo ICS:', icsError);
                     // No interrumpimos el flujo principal si falla
                 }
                 
-                // ===== NOTIFICACIONES WHATSAPP EXISTENTES =====
+                // ===== NOTIFICACIONES WHATSAPP =====
                 if (window.notificarNuevaReserva) {
                     console.log('📤 Enviando notificaciones WhatsApp...');
                     window.notificarNuevaReserva(result.data);
