@@ -1,7 +1,7 @@
-// utils/whatsapp-helper.js - VERSIÓN GLOBAL COMPLETA con WhatsApp universal + NTFY dinámico
+// utils/whatsapp-helper.js - VERSIÓN GLOBAL COMPLETA con WhatsApp universal + NTFY dinámico + ANTICIPO
 // CLIENTE: Studioisma.nails
 
-console.log('📱 whatsapp-helper.js - VERSIÓN GLOBAL CON NTFY');
+console.log('📱 whatsapp-helper.js - VERSIÓN GLOBAL CON NTFY Y ANTICIPO');
 
 // ============================================
 // CONFIGURACIÓN CENTRALIZADA
@@ -111,6 +111,51 @@ window.enviarNotificacionPush = async function(titulo, mensaje, etiquetas = 'bel
 };
 
 // ============================================
+// 🔥 NOTIFICACIÓN DE RESERVA PENDIENTE (SOLO PUSH PARA LA DUEÑA)
+// ============================================
+window.notificarReservaPendiente = async function(booking) {
+    try {
+        if (!booking) {
+            console.error('❌ No hay datos de reserva');
+            return false;
+        }
+
+        console.log('📤 Procesando notificación de RESERVA PENDIENTE (SOLO PUSH)');
+
+        const fechaConDia = window.formatFechaCompleta ? 
+            window.formatFechaCompleta(booking.fecha) : 
+            booking.fecha;
+        
+        const horaFormateada = window.formatTo12Hour ? 
+            window.formatTo12Hour(booking.hora_inicio) : 
+            booking.hora_inicio;
+            
+        const profesional = booking.profesional_nombre || booking.trabajador_nombre || 'No asignada';
+        
+        // ✅ PUSH NOTIFICATION (SOLO ESTO)
+        const mensajePush = 
+`🆕 SOLICITUD PENDIENTE - Studioisma.nails
+👤 Cliente: ${booking.cliente_nombre}
+📱 WhatsApp: ${booking.cliente_whatsapp}
+💅 Servicio: ${booking.servicio}
+💰 Estado: Esperando pago`;
+
+        await window.enviarNotificacionPush(
+            `💰 Studioisma.nails - Pago pendiente`,
+            mensajePush,
+            'moneybag',
+            'high'  // Prioridad alta
+        );
+        
+        console.log('✅ Notificación de reserva pendiente enviada (SOLO PUSH)');
+        return true;
+    } catch (error) {
+        console.error('Error en notificarReservaPendiente:', error);
+        return false;
+    }
+};
+
+// ============================================
 // NOTIFICACIÓN DE NUEVA RESERVA (WhatsApp + ntfy)
 // ============================================
 window.notificarNuevaReserva = async function(booking) {
@@ -134,7 +179,7 @@ window.notificarNuevaReserva = async function(booking) {
         
         // WhatsApp a la dueña
         const mensajeWhatsApp = 
-`🆕 *NUEVA RESERVA - Studioisma.nails*
+`🎉 *TURNO CONFIRMADO - Studioisma.nails*
 
 👤 *Cliente:* ${booking.cliente_nombre}
 📱 *WhatsApp:* ${booking.cliente_whatsapp}
@@ -142,23 +187,25 @@ window.notificarNuevaReserva = async function(booking) {
 📅 *Fecha:* ${fechaConDia}
 ⏰ *Hora:* ${horaFormateada}
 👩‍🎨 *Profesional:* ${profesional}
+💰 *Estado:* Pagado - Reservado
 
-✅ Reserva confirmada automáticamente. 💖`;
+✅ El cliente ya realizó el pago.`;
 
         window.enviarWhatsApp(CONFIG.TELEFONO_DUENNA, mensajeWhatsApp);
         
         // Push notification
         const mensajePush = 
-`🆕 NUEVA RESERVA
+`🎉 TURNO CONFIRMADO
 👤 Cliente: ${booking.cliente_nombre}
 📱 WhatsApp: ${booking.cliente_whatsapp}
 💅 Servicio: ${booking.servicio} (${booking.duracion} min)
 📅 Fecha: ${fechaConDia}
 ⏰ Hora: ${horaFormateada}
-👩‍🎨 Profesional: ${profesional}`;
+👩‍🎨 Profesional: ${profesional}
+💰 Estado: Pagado`;
 
         await window.enviarNotificacionPush(
-            'Nueva reserva - Studioisma.nails',
+            '🎉 Turno confirmado - Studioisma.nails',
             mensajePush,
             'tada',
             'default'
@@ -244,7 +291,7 @@ Disculpá las molestias.`;
 ${canceladoPor === 'cliente' ? '🔔 Cancelado por cliente' : '🔔 Cancelado por admin'}`;
 
         await window.enviarNotificacionPush(
-            'Cancelación - Studioisma.nails',
+            '❌ Cancelación - Studioisma.nails',
             mensajePush,
             'x',
             'default'
@@ -258,4 +305,4 @@ ${canceladoPor === 'cliente' ? '🔔 Cancelado por cliente' : '🔔 Cancelado po
     }
 };
 
-console.log('✅ whatsapp-helper.js VERSIÓN COMPLETA CON NTFY');
+console.log('✅ whatsapp-helper.js VERSIÓN COMPLETA CON NTFY Y ANTICIPO');

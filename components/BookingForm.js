@@ -1,4 +1,4 @@
-// components/BookingForm.js - VERSIÓN IPHONE (con estilos originales)
+// components/BookingForm.js - VERSIÓN IPHONE CON ANTICIPO FIJO DE 500 CUP
 
 function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cliente }) {
     const [submitting, setSubmitting] = React.useState(false);
@@ -194,6 +194,56 @@ END:VCALENDAR`;
     }
 
     // ============================================
+    // FUNCIÓN PARA ENVIAR DATOS DE PAGO POR WHATSAPP (PERSONALIZADA PARA STUDIOISMA.NAILS)
+    // ============================================
+    const enviarDatosPagoWhatsApp = (clienteWhatsapp, datosReserva) => {
+        try {
+            const fechaConDia = window.formatFechaCompleta ? 
+                window.formatFechaCompleta(datosReserva.fecha) : 
+                datosReserva.fecha;
+            
+            const horaFormateada = window.formatTo12Hour ? 
+                window.formatTo12Hour(datosReserva.hora_inicio) : 
+                datosReserva.hora_inicio;
+            
+            // 🔥 MONTO FIJO DE 500 CUP (ya no es 40%)
+            const anticipo = 500;
+
+            // 🔥 PERSONALIZADO PARA STUDIOISMA.NAILS
+            const mensajePago = 
+`💅 *Studioisma.nails - Confirmación de Turno*
+
+✅ *SOLICITUD DE TURNO REGISTRADA*
+
+📅 *Fecha:* ${fechaConDia}
+⏰ *Hora:* ${horaFormateada}
+💈 *Servicio:* ${datosReserva.servicio}
+👩‍🎨 *Profesional:* ${datosReserva.profesional_nombre}
+
+💰 *Para confirmar tu turno*, envía el *anticipo de ${anticipo} CUP* por:
+
+🏦 *Transferencia bancaria:* 
+   Tárjeta a transferir : 9205 1299 7180 3847
+   Alias: studioisma.pagos.mp
+
+📱 *Enviar comprobante a este WhatsApp:* 
+   +53 54646800
+
+⏳ *Importante:* 
+El turno se cancelará automáticamente si no se confirma el pago dentro de las **2 horas**.
+
+¡Gracias por elegirnos! 💖`;
+
+            window.enviarWhatsApp(clienteWhatsapp, mensajePago);
+            console.log('📤 Mensaje con datos de pago enviado al cliente');
+            return true;
+        } catch (error) {
+            console.error('Error enviando datos de pago:', error);
+            return false;
+        }
+    };
+
+    // ============================================
     // HANDLE SUBMIT (CON ESTILOS ORIGINALES)
     // ============================================
     const handleSubmit = async (e) => {
@@ -224,13 +274,21 @@ END:VCALENDAR`;
                 fecha: date,
                 hora_inicio: time,
                 hora_fin: endTime,
-                estado: "Reservado"
+                estado: "Reservado" // Este estado se sobreescribe en api.js a "Pendiente"
             };
 
             const result = await createBooking(bookingData);
             
             if (result.success && result.data) {
-                console.log('✅ Reserva creada');
+                console.log('✅ Reserva creada con estado PENDIENTE');
+
+                // 🔥 ENVIAR DATOS DE PAGO POR WHATSAPP AL CLIENTE
+                enviarDatosPagoWhatsApp(cliente.whatsapp, result.data);
+
+                // 🔥 NOTIFICAR A LA DUEÑA (solicitud pendiente) - SOLO PUSH
+                if (window.notificarReservaPendiente) {
+                    await window.notificarReservaPendiente(result.data);
+                }
                 
                 const icsContent = generarArchivoCalendario(result.data);
                 
@@ -244,10 +302,6 @@ END:VCALENDAR`;
                 const nombreArchivo = `turno-${fechaSegura}-${horaSegura}-${nombreSeguro}.ics`;
                 
                 descargarArchivoICS(icsContent, nombreArchivo);
-                
-                if (window.notificarNuevaReserva) {
-                    window.notificarNuevaReserva(result.data);
-                }
                 
                 onSubmit(result.data);
             }
