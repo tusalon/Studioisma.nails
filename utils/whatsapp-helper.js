@@ -1,38 +1,33 @@
-// utils/whatsapp-helper.js - VERSIÓN GLOBAL COMPLETA con WhatsApp universal + NTFY dinámico + ANTICIPO
+// utils/whatsapp-helper.js - VERSIÓN DINÁMICA (CORREGIDA)
+// CON FUNCIÓN PARA RESERVAS PENDIENTES DE PAGO
+// PUSH SOLO EN SOLICITUD DE RESERVA
 // CLIENTE: Studioisma.nails
 
-console.log('📱 whatsapp-helper.js - VERSIÓN GLOBAL CON NTFY Y ANTICIPO');
+console.log('📱 whatsapp-helper.js - VERSIÓN DINÁMICA');
 
 // ============================================
-// CONFIGURACIÓN CENTRALIZADA
+// FUNCIÓN PARA OBTENER CONFIGURACIÓN DEL NEGOCIO
 // ============================================
-const CONFIG = {
-    NTFY_TOPIC_DEFAULT: 'studioisma-notifications',
-    TELEFONO_DUENNA: '54646800'
-};
-
-// ============================================
-// FUNCIÓN PARA OBTENER TOPIC NTFY (SIEMPRE DINÁMICO)
-// ============================================
-window.getNtfyTopicConfig = async function() {
+async function getConfigNegocio() {
     try {
-        if (window.getNtfyTopic) {
-            const topic = await window.getNtfyTopic();
-            if (topic) {
-                console.log('📡 Usando ntfy topic de configuración:', topic);
-                return topic;
-            }
-        }
-        console.log('📡 Usando ntfy topic por defecto:', CONFIG.NTFY_TOPIC_DEFAULT);
-        return CONFIG.NTFY_TOPIC_DEFAULT;
+        const config = await window.cargarConfiguracionNegocio();
+        return {
+            nombre: config?.nombre || 'Studioisma.nails',
+            telefono: config?.telefono || '54646800',
+            ntfyTopic: config?.ntfy_topic || 'studioisma-notifications'
+        };
     } catch (error) {
-        console.error('Error obteniendo ntfy topic:', error);
-        return CONFIG.NTFY_TOPIC_DEFAULT;
+        console.error('Error obteniendo configuración:', error);
+        return {
+            nombre: 'Studioisma.nails',
+            telefono: '54646800',
+            ntfyTopic: 'studioisma-notifications'
+        };
     }
-};
+}
 
 // ============================================
-// DETECTOR DE iOS MEJORADO
+// DETECTOR DE iOS
 // ============================================
 window.esIOS = function() {
     const userAgent = navigator.userAgent || navigator.vendor || window.opera;
@@ -41,7 +36,7 @@ window.esIOS = function() {
 };
 
 // ============================================
-// FUNCIÓN UNIVERSAL WHATSAPP - FUNCIONA EN TODOS LADOS
+// FUNCIÓN UNIVERSAL WHATSAPP
 // ============================================
 window.enviarWhatsApp = function(telefono, mensaje) {
     try {
@@ -63,35 +58,34 @@ window.enviarWhatsApp = function(telefono, mensaje) {
         } else {
             const nuevaVentana = window.open(url, '_blank');
             if (!nuevaVentana || nuevaVentana.closed || typeof nuevaVentana.closed === 'undefined') {
-                console.log('⚠️ Pop-up bloqueado, usando location.href');
                 window.location.href = url;
             }
         }
         return true;
     } catch (error) {
         console.error('❌ Error en enviarWhatsApp:', error);
-        try {
-            const numeroSimple = telefono.toString().replace(/\D/g, '');
-            window.location.href = `https://wa.me/53${numeroSimple}?text=${encodeURIComponent(mensaje)}`;
-        } catch (e) {}
         return false;
     }
 };
 
 // ============================================
-// FUNCIÓN UNIVERSAL NTFY - ÚNICA PARA TODAS LAS NOTIFICACIONES PUSH
+// FUNCIÓN PARA ENVIAR NOTIFICACIÓN PUSH (CORREGIDA)
 // ============================================
 window.enviarNotificacionPush = async function(titulo, mensaje, etiquetas = 'bell', prioridad = 'default') {
     try {
-        const topic = await window.getNtfyTopicConfig();
+        const config = await getConfigNegocio();
+        const topic = config.ntfyTopic;
         
         console.log(`📢 Enviando push a ntfy.sh/${topic}:`, titulo);
+        
+        // Eliminar caracteres no ASCII del título
+        const tituloLimpio = titulo.replace(/[^\x00-\x7F]/g, '');
         
         const response = await fetch(`https://ntfy.sh/${topic}`, {
             method: 'POST',
             body: mensaje,
             headers: {
-                'Title': titulo,
+                'Title': tituloLimpio,
                 'Priority': prioridad,
                 'Tags': etiquetas
             }
@@ -111,52 +105,7 @@ window.enviarNotificacionPush = async function(titulo, mensaje, etiquetas = 'bel
 };
 
 // ============================================
-// 🔥 NOTIFICACIÓN DE RESERVA PENDIENTE (SOLO PUSH PARA LA DUEÑA)
-// ============================================
-window.notificarReservaPendiente = async function(booking) {
-    try {
-        if (!booking) {
-            console.error('❌ No hay datos de reserva');
-            return false;
-        }
-
-        console.log('📤 Procesando notificación de RESERVA PENDIENTE (SOLO PUSH)');
-
-        const fechaConDia = window.formatFechaCompleta ? 
-            window.formatFechaCompleta(booking.fecha) : 
-            booking.fecha;
-        
-        const horaFormateada = window.formatTo12Hour ? 
-            window.formatTo12Hour(booking.hora_inicio) : 
-            booking.hora_inicio;
-            
-        const profesional = booking.profesional_nombre || booking.trabajador_nombre || 'No asignada';
-        
-        // ✅ PUSH NOTIFICATION (SOLO ESTO)
-        const mensajePush = 
-`🆕 SOLICITUD PENDIENTE - Studioisma.nails
-👤 Cliente: ${booking.cliente_nombre}
-📱 WhatsApp: ${booking.cliente_whatsapp}
-💅 Servicio: ${booking.servicio}
-💰 Estado: Esperando pago`;
-
-        await window.enviarNotificacionPush(
-            `💰 Studioisma.nails - Pago pendiente`,
-            mensajePush,
-            'moneybag',
-            'high'  // Prioridad alta
-        );
-        
-        console.log('✅ Notificación de reserva pendiente enviada (SOLO PUSH)');
-        return true;
-    } catch (error) {
-        console.error('Error en notificarReservaPendiente:', error);
-        return false;
-    }
-};
-
-// ============================================
-// NOTIFICACIÓN DE NUEVA RESERVA (WhatsApp + ntfy)
+// NOTIFICACIÓN DE NUEVA RESERVA (CONFIRMADA)
 // ============================================
 window.notificarNuevaReserva = async function(booking) {
     try {
@@ -165,8 +114,10 @@ window.notificarNuevaReserva = async function(booking) {
             return false;
         }
 
-        console.log('📤 Procesando notificación de NUEVA RESERVA');
+        console.log('📤 Procesando notificación de NUEVA RESERVA (CONFIRMADA)');
 
+        const config = await getConfigNegocio();
+        
         const fechaConDia = window.formatFechaCompleta ? 
             window.formatFechaCompleta(booking.fecha) : 
             booking.fecha;
@@ -179,7 +130,7 @@ window.notificarNuevaReserva = async function(booking) {
         
         // WhatsApp a la dueña
         const mensajeWhatsApp = 
-`🎉 *TURNO CONFIRMADO - Studioisma.nails*
+`🎉 *TURNO CONFIRMADO - ${config.nombre}*
 
 👤 *Cliente:* ${booking.cliente_nombre}
 📱 *WhatsApp:* ${booking.cliente_whatsapp}
@@ -191,27 +142,10 @@ window.notificarNuevaReserva = async function(booking) {
 
 ✅ El cliente ya realizó el pago.`;
 
-        window.enviarWhatsApp(CONFIG.TELEFONO_DUENNA, mensajeWhatsApp);
+        window.enviarWhatsApp(config.telefono, mensajeWhatsApp);
         
-        // Push notification
-        const mensajePush = 
-`🎉 TURNO CONFIRMADO
-👤 Cliente: ${booking.cliente_nombre}
-📱 WhatsApp: ${booking.cliente_whatsapp}
-💅 Servicio: ${booking.servicio} (${booking.duracion} min)
-📅 Fecha: ${fechaConDia}
-⏰ Hora: ${horaFormateada}
-👩‍🎨 Profesional: ${profesional}
-💰 Estado: Pagado`;
-
-        await window.enviarNotificacionPush(
-            '🎉 Turno confirmado - Studioisma.nails',
-            mensajePush,
-            'tada',
-            'default'
-        );
-        
-        console.log('✅ Notificaciones de nueva reserva enviadas');
+        // ❌ NO ENVIAR PUSH AQUÍ
+        console.log('✅ Notificaciones de nueva reserva enviadas (sin push)');
         return true;
     } catch (error) {
         console.error('Error en notificarNuevaReserva:', error);
@@ -220,17 +154,19 @@ window.notificarNuevaReserva = async function(booking) {
 };
 
 // ============================================
-// NOTIFICACIÓN DE CANCELACIÓN (WhatsApp cliente + WhatsApp dueña + ntfy)
+// 🆕 NOTIFICACIÓN DE RESERVA PENDIENTE (CON PUSH)
 // ============================================
-window.notificarCancelacion = async function(booking) {
+window.notificarReservaPendiente = async function(booking) {
     try {
         if (!booking) {
             console.error('❌ No hay datos de reserva');
             return false;
         }
 
-        console.log('📤 Procesando notificación de CANCELACIÓN');
+        console.log('📤 Procesando notificación de RESERVA PENDIENTE (CON PUSH)');
 
+        const config = await getConfigNegocio();
+        
         const fechaConDia = window.formatFechaCompleta ? 
             window.formatFechaCompleta(booking.fecha) : 
             booking.fecha;
@@ -241,11 +177,72 @@ window.notificarCancelacion = async function(booking) {
             
         const profesional = booking.profesional_nombre || booking.trabajador_nombre || 'No asignada';
         
+        // WhatsApp a la dueña
+        const mensajeWhatsApp = 
+`🆕 *RESERVA PENDIENTE DE PAGO - ${config.nombre}*
+
+👤 *Cliente:* ${booking.cliente_nombre}
+📱 *WhatsApp:* ${booking.cliente_whatsapp}
+💅 *Servicio:* ${booking.servicio} (${booking.duracion} min)
+📅 *Fecha:* ${fechaConDia}
+⏰ *Hora:* ${horaFormateada}
+👩‍🎨 *Profesional:* ${profesional}
+💰 *Estado:* Pendiente de pago
+
+✅ Ingresá al panel para confirmar el pago:
+https://tusalon.github.io/studioisma.nails/admin-login.html`;
+
+        window.enviarWhatsApp(config.telefono, mensajeWhatsApp);
+        
+        // ✅ PUSH NOTIFICATION (SOLO AQUÍ)
+        const mensajePush = 
+`🆕 RESERVA PENDIENTE - ${config.nombre}
+👤 Cliente: ${booking.cliente_nombre}
+💰 Estado: Esperando pago`;
+
+        await window.enviarNotificacionPush(
+            `💰 ${config.nombre} - Pago pendiente`,
+            mensajePush,
+            'moneybag',
+            'high'  // Prioridad alta
+        );
+        
+        console.log('✅ Notificación de reserva pendiente enviada (con push)');
+        return true;
+    } catch (error) {
+        console.error('Error en notificarReservaPendiente:', error);
+        return false;
+    }
+};
+
+// ============================================
+// NOTIFICACIÓN DE CANCELACIÓN
+// ============================================
+window.notificarCancelacion = async function(booking) {
+    try {
+        if (!booking) {
+            console.error('❌ No hay datos de reserva');
+            return false;
+        }
+
+        console.log('📤 Procesando notificación de CANCELACIÓN');
+
+        const config = await getConfigNegocio();
+        
+        const fechaConDia = window.formatFechaCompleta ? 
+            window.formatFechaCompleta(booking.fecha) : 
+            booking.fecha;
+        
+        const horaFormateada = window.formatTo12Hour ? 
+            window.formatTo12Hour(booking.hora_inicio) : 
+            booking.hora_inicio;
+            
+        const profesional = booking.profesional_nombre || booking.trabajador_nombre || 'No asignada';
         const canceladoPor = booking.cancelado_por || 'admin';
         
-        // WhatsApp al DUEÑO (siempre)
+        // WhatsApp al DUEÑO
         const mensajeDuenno = 
-`❌ *CANCELACIÓN - Studioisma.nails*
+`❌ *CANCELACIÓN - ${config.nombre}*
 
 👤 *Cliente:* ${booking.cliente_nombre}
 📱 *WhatsApp:* ${booking.cliente_whatsapp}
@@ -254,14 +251,14 @@ window.notificarCancelacion = async function(booking) {
 ⏰ *Hora:* ${horaFormateada}
 👩‍🎨 *Profesional:* ${profesional}
 
-${canceladoPor === 'cliente' ? 'El cliente canceló su turno desde la app.' : 'El administrador canceló la reserva.'}`;
+${canceladoPor === 'cliente' ? 'El cliente canceló su turno.' : 'El administrador canceló la reserva.'}`;
 
-        window.enviarWhatsApp(CONFIG.TELEFONO_DUENNA, mensajeDuenno);
+        window.enviarWhatsApp(config.telefono, mensajeDuenno);
 
         // WhatsApp al CLIENTE (solo si canceló el admin)
         if (canceladoPor === 'admin') {
             const mensajeCliente = 
-`❌ *CANCELACIÓN DE TURNO*
+`❌ *CANCELACIÓN DE TURNO - ${config.nombre}*
 
 Hola *${booking.cliente_nombre}*, lamentamos informarte que tu turno ha sido cancelado.
 
@@ -272,10 +269,7 @@ Hola *${booking.cliente_nombre}*, lamentamos informarte que tu turno ha sido can
 
 🔔 *Motivo:* Cancelación por administración
 
-📱 *¿Querés reprogramar?*
-Podés hacerlo desde la app
-
-Disculpá las molestias.`;
+📱 *¿Querés reprogramar?* Podés hacerlo desde la app`;
 
             const telefonoCliente = booking.cliente_whatsapp.replace(/\D/g, '');
             window.enviarWhatsApp(telefonoCliente, mensajeCliente);
@@ -283,7 +277,7 @@ Disculpá las molestias.`;
 
         // Push notification
         const mensajePush = 
-`❌ CANCELACION
+`❌ CANCELACION - ${config.nombre}
 👤 Cliente: ${booking.cliente_nombre}
 📱 WhatsApp: ${booking.cliente_whatsapp}
 💅 Servicio: ${booking.servicio}
@@ -291,7 +285,7 @@ Disculpá las molestias.`;
 ${canceladoPor === 'cliente' ? '🔔 Cancelado por cliente' : '🔔 Cancelado por admin'}`;
 
         await window.enviarNotificacionPush(
-            '❌ Cancelación - Studioisma.nails',
+            `❌ ${config.nombre} - Cancelación`,
             mensajePush,
             'x',
             'default'
@@ -305,4 +299,5 @@ ${canceladoPor === 'cliente' ? '🔔 Cancelado por cliente' : '🔔 Cancelado po
     }
 };
 
-console.log('✅ whatsapp-helper.js VERSIÓN COMPLETA CON NTFY Y ANTICIPO');
+console.log('✅ whatsapp-helper.js - VERSIÓN DINÁMICA CARGADA');
+console.log('✅ PUSH SOLO EN SOLICITUDES DE RESERVA (Pendiente)');
