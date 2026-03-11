@@ -1,4 +1,4 @@
-// components/BookingForm.js - VERSIÓN IPHONE CON ANTICIPO FIJO DE 500 CUP
+// components/BookingForm.js - VERSIÓN IPHONE CON ANTICIPO FIJO DE 500 CUP (CORREGIDA)
 
 function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cliente }) {
     const [submitting, setSubmitting] = React.useState(false);
@@ -244,7 +244,7 @@ El turno se cancelará automáticamente si no se confirma el pago dentro de las 
     };
 
     // ============================================
-    // HANDLE SUBMIT (CON ESTILOS ORIGINALES)
+    // HANDLE SUBMIT CORREGIDO
     // ============================================
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -264,6 +264,7 @@ El turno se cancelará automáticamente si no se confirma el pago dentro de las 
 
             const endTime = calculateEndTime(time, service.duracion);
 
+            // 🔥 CORREGIDO: NO enviar estado, dejar que api.js ponga "Pendiente"
             const bookingData = {
                 cliente_nombre: cliente.nombre,
                 cliente_whatsapp: cliente.whatsapp,
@@ -273,14 +274,19 @@ El turno se cancelará automáticamente si no se confirma el pago dentro de las 
                 profesional_nombre: profesional.nombre,
                 fecha: date,
                 hora_inicio: time,
-                hora_fin: endTime,
-                estado: "Reservado" // Este estado se sobreescribe en api.js a "Pendiente"
+                hora_fin: endTime
+                // ❌ ELIMINADO: estado: "Reservado"
             };
 
-            const result = await createBooking(bookingData);
+            console.log('📤 Enviando a api.js (sin estado):', bookingData);
+            
+            // 🔥 CORREGIDO: Usar window.createBooking (la GLOBAL)
+            const result = await window.createBooking(bookingData);
+            
+            console.log('📦 RESULTADO de createBooking:', result);
             
             if (result.success && result.data) {
-                console.log('✅ Reserva creada con estado PENDIENTE');
+                console.log('✅ Reserva creada. ESTADO FINAL:', result.data.estado);
 
                 // 🔥 ENVIAR DATOS DE PAGO POR WHATSAPP AL CLIENTE
                 enviarDatosPagoWhatsApp(cliente.whatsapp, result.data);
