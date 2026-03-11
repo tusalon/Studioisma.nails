@@ -1,7 +1,6 @@
 // utils/whatsapp-helper.js - VERSIÓN DINÁMICA (CORREGIDA)
 // CON FUNCIÓN PARA RESERVAS PENDIENTES DE PAGO
-// PUSH SOLO EN SOLICITUD DE RESERVA
-// CLIENTE: Studioisma.nails
+// PUSH SOLO EN SOLICITUD DE RESERVA (SIN WHATSAPP A LA DUEÑA)
 
 console.log('📱 whatsapp-helper.js - VERSIÓN DINÁMICA');
 
@@ -128,7 +127,7 @@ window.notificarNuevaReserva = async function(booking) {
             
         const profesional = booking.profesional_nombre || booking.trabajador_nombre || 'No asignada';
         
-        // WhatsApp a la dueña
+        // WhatsApp a la dueña (CUANDO SE CONFIRMA EL PAGO)
         const mensajeWhatsApp = 
 `🎉 *TURNO CONFIRMADO - ${config.nombre}*
 
@@ -144,8 +143,25 @@ window.notificarNuevaReserva = async function(booking) {
 
         window.enviarWhatsApp(config.telefono, mensajeWhatsApp);
         
-        // ❌ NO ENVIAR PUSH AQUÍ
-        console.log('✅ Notificaciones de nueva reserva enviadas (sin push)');
+        // Push notification
+        const mensajePush = 
+`🎉 TURNO CONFIRMADO
+👤 Cliente: ${booking.cliente_nombre}
+📱 WhatsApp: ${booking.cliente_whatsapp}
+💅 Servicio: ${booking.servicio} (${booking.duracion} min)
+📅 Fecha: ${fechaConDia}
+⏰ Hora: ${horaFormateada}
+👩‍🎨 Profesional: ${profesional}
+💰 Estado: Pagado`;
+
+        await window.enviarNotificacionPush(
+            `🎉 ${config.nombre} - Turno confirmado`,
+            mensajePush,
+            'tada',
+            'default'
+        );
+        
+        console.log('✅ Notificaciones de nueva reserva enviadas');
         return true;
     } catch (error) {
         console.error('Error en notificarNuevaReserva:', error);
@@ -154,7 +170,7 @@ window.notificarNuevaReserva = async function(booking) {
 };
 
 // ============================================
-// 🆕 NOTIFICACIÓN DE RESERVA PENDIENTE (CON PUSH)
+// 🆕 NOTIFICACIÓN DE RESERVA PENDIENTE (SOLO PUSH, SIN WHATSAPP A LA DUEÑA)
 // ============================================
 window.notificarReservaPendiente = async function(booking) {
     try {
@@ -163,7 +179,7 @@ window.notificarReservaPendiente = async function(booking) {
             return false;
         }
 
-        console.log('📤 Procesando notificación de RESERVA PENDIENTE (CON PUSH)');
+        console.log('📤 Procesando notificación de RESERVA PENDIENTE (SOLO PUSH)');
 
         const config = await getConfigNegocio();
         
@@ -177,26 +193,12 @@ window.notificarReservaPendiente = async function(booking) {
             
         const profesional = booking.profesional_nombre || booking.trabajador_nombre || 'No asignada';
         
-        // WhatsApp a la dueña
-        const mensajeWhatsApp = 
-`🆕 *RESERVA PENDIENTE DE PAGO - ${config.nombre}*
-
-👤 *Cliente:* ${booking.cliente_nombre}
-📱 *WhatsApp:* ${booking.cliente_whatsapp}
-💅 *Servicio:* ${booking.servicio} (${booking.duracion} min)
-📅 *Fecha:* ${fechaConDia}
-⏰ *Hora:* ${horaFormateada}
-👩‍🎨 *Profesional:* ${profesional}
-💰 *Estado:* Pendiente de pago
-
-✅ Ingresá al panel para confirmar el pago:
-https://tusalon.github.io/studioisma.nails/admin-login.html`;
-
-        window.enviarWhatsApp(config.telefono, mensajeWhatsApp);
+        // 🔥 ELIMINADO: WhatsApp a la dueña
+        // La dueña ya no recibe mensaje de WhatsApp para reservas pendientes
         
-        // ✅ PUSH NOTIFICATION (SOLO AQUÍ)
+        // ✅ PUSH NOTIFICATION (SOLO ESTO)
         const mensajePush = 
-`🆕 RESERVA PENDIENTE - ${config.nombre}
+`🆕 SOLICITUD PENDIENTE - ${config.nombre}
 👤 Cliente: ${booking.cliente_nombre}
 💰 Estado: Esperando pago`;
 
@@ -207,7 +209,7 @@ https://tusalon.github.io/studioisma.nails/admin-login.html`;
             'high'  // Prioridad alta
         );
         
-        console.log('✅ Notificación de reserva pendiente enviada (con push)');
+        console.log('✅ Notificación de reserva pendiente enviada (SOLO PUSH)');
         return true;
     } catch (error) {
         console.error('Error en notificarReservaPendiente:', error);
