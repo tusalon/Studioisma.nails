@@ -50,7 +50,7 @@ const verificarNumero = async (numero) => {
     try {
         // 🔥 VERIFICAR SI ES ADMIN (DUEÑO) - VERSIÓN CORREGIDA DEFINITIVA
         if (numeroLimpio === config?.telefono?.replace(/\D/g, '')) {
-            console.log('👑 Número de administradora detectado para Studioisma.nails');
+            console.log('👑 Número de administradora detectado para Negocio de Prueba');
             
             // 🔥 OBTENER EL NEGOCIO_ID CORRECTO
             const negocioId = window.NEGOCIO_ID_POR_DEFECTO || 
@@ -64,7 +64,7 @@ const verificarNumero = async (numero) => {
             
             // 🔥 GUARDAR EL ID CORRECTO
             localStorage.setItem('negocioId', negocioId);
-            localStorage.setItem('negocioNombre', config?.nombre || 'Studioisma.nails');
+            localStorage.setItem('negocioNombre', config?.nombre || 'Negocio de Prueba');
             
             console.log('✅ negocioId guardado en localStorage:', negocioId);
             console.log('✅ negocioNombre guardado:', config?.nombre);
@@ -227,7 +227,7 @@ const handleSubmit = async (e) => {
     const colorPrimario = config?.color_primario || '#ec4899';
     const colorSecundario = config?.color_secundario || '#f9a8d4';
     const nombreNegocio = config?.nombre || 'Mi Salón';
-    const telefonoDuenno = config?.telefono || '54646800';
+    const telefonoDuenno = config?.telefono || '55002272';
     const logoUrl = config?.logo_url;
     const sticker = config?.especialidad?.toLowerCase().includes('uñas') ? '💅' : 
                     config?.especialidad?.toLowerCase().includes('pelo') ? '💇‍♀️' : 

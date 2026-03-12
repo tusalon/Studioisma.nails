@@ -1,4 +1,4 @@
-// utils/api.js - Versión genérica para profesionales (CORREGIDO) CON ANTICIPO
+// utils/api.js - Versión genérica para profesionales (CORREGIDO)
 
 console.log('📡 api.js cargado');
 
@@ -98,7 +98,7 @@ async function createBooking(bookingData) {
             fecha: bookingData.fecha,
             hora_inicio: bookingData.hora_inicio,
             hora_fin: bookingData.hora_fin,
-            estado: bookingData.estado || 'Pendiente'  // 🔥 CAMBIADO DE 'Reservado' A 'Pendiente' PARA ANTICIPO
+            estado: bookingData.estado || 'Reservado'
         };
 
         console.log('📤 Enviando a Supabase:', dataForSupabase);

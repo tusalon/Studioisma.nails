@@ -1,4 +1,6 @@
-// components/BookingForm.js - VERSIÓN IPHONE CON ANTICIPO FIJO DE 500 CUP (CORREGIDA)
+// components/BookingForm.js - VERSIÓN IPHONE (con estilos originales)
+// MODIFICADO PARA GORDISNAILS - ENVÍO DE PAGO Y CONFIRMACIÓN POR WHATSAPP
+// + USO DE CONFIGURACIÓN DE ANTICIPO
 
 function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cliente }) {
     const [submitting, setSubmitting] = React.useState(false);
@@ -68,11 +70,9 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
     function generarArchivoCalendario(bookingData) {
         const uid = generarUUID();
         
-        // Fechas UTC
         const dtstart = formatearFechaUTC(bookingData.fecha, bookingData.hora_inicio);
         const dtend = formatearFechaUTC(bookingData.fecha, bookingData.hora_fin);
         
-        // Fecha del sistema
         const ahora = new Date();
         const stampYear = ahora.getUTCFullYear();
         const stampMonth = String(ahora.getUTCMonth() + 1).padStart(2, '0');
@@ -81,13 +81,11 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
         const stampMin = String(ahora.getUTCMinutes()).padStart(2, '0');
         const dtstamp = `${stampYear}${stampMonth}${stampDay}T${stampHour}${stampMin}00`;
         
-        // Fechas legibles
         const fecha = new Date(bookingData.fecha + 'T' + bookingData.hora_inicio + ':00');
         const fechaFin = new Date(bookingData.fecha + 'T' + bookingData.hora_fin + ':00');
         
         const meses = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         
-        // Fecha inicio
         const dia = fecha.getDate();
         const mes = meses[fecha.getMonth()];
         const año = fecha.getFullYear();
@@ -98,14 +96,12 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
         horas = horas ? horas : 12;
         const fechaInicioStr = `${dia} ${mes} ${año} ${horas}:${minutos} ${ampm}`;
         
-        // Fecha fin
         let horasFin = fechaFin.getHours();
         const minutosFin = fechaFin.getMinutes().toString().padStart(2, '0');
         const ampmFin = horasFin >= 12 ? 'PM' : 'AM';
         horasFin = horasFin % 12;
         horasFin = horasFin ? horasFin : 12;
         
-        // Crear descripción con líneas PARTIDAS
         const linea1 = `Appointment Details`;
         const linea2 = `When: ${fechaInicioStr} - ${horasFin}:${minutosFin} ${ampmFin} (CST)`;
         const linea3 = `Service: ${bookingData.servicio}`;
@@ -113,14 +109,13 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
         const linea5 = `Client: ${bookingData.cliente_nombre}`;
         const linea6 = `WhatsApp: +53 ${bookingData.cliente_whatsapp}`;
         const linea7 = ``;
-        const linea8 = `Studioisma.nails`;
+        const linea8 = `GordisNailsbySandra`;
         
-        // Aplicar partición de líneas largas
         const descripcion = `${partirLinea(linea1)}\n${partirLinea(linea2)}\n${partirLinea(linea3)}\n${partirLinea(linea4)}\n${partirLinea(linea5)}\n${partirLinea(linea6)}\n${linea7}\n${linea8}`;
         
         return `BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//Studioisma//Setmore//EN
+PRODID:-//GordisNails//Setmore//EN
 METHOD:REQUEST
 BEGIN:VTIMEZONE
 TZID:America/Havana
@@ -150,10 +145,10 @@ DTSTART:${dtstart}
 DTEND:${dtend}
 SUMMARY:${bookingData.servicio} with ${bookingData.profesional_nombre}
 TRANSP:OPAQUE
-LOCATION:Studioisma.nails
+LOCATION:GordisNailsbySandra
 DESCRIPTION:${descripcion}
-ORGANIZER;CN="Studioisma.nails":mailto:studioisma@gmail.com
-ATTENDEE;ROLE=CHAIR;CUTYPE=INDIVIDUAL;RSVP=FALSE;CN="Studioisma.nails":MAILTO:studioisma@gmail.com
+ORGANIZER;CN="GordisNailsbySandra":mailto:gordis@email.com
+ATTENDEE;ROLE=CHAIR;CUTYPE=INDIVIDUAL;RSVP=FALSE;CN="GordisNailsbySandra":MAILTO:gordis@email.com
 ATTENDEE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;RSVP=FALSE;CN="${bookingData.cliente_nombre}":MAILTO:cliente@email.com
 STATUS:CONFIRMED
 CLASS:PUBLIC
@@ -194,10 +189,22 @@ END:VCALENDAR`;
     }
 
     // ============================================
-    // FUNCIÓN PARA ENVIAR DATOS DE PAGO POR WHATSAPP (PERSONALIZADA PARA STUDIOISMA.NAILS)
+    // 🆕 FUNCIÓN ACTUALIZADA: ENVÍA DATOS DE PAGO SEGÚN CONFIGURACIÓN
     // ============================================
-    const enviarDatosPagoWhatsApp = (clienteWhatsapp, datosReserva) => {
+    async function enviarDatosPagoWhatsApp(clienteWhatsapp, datosReserva) {
         try {
+            // Cargar configuración del negocio
+            const configNegocio = await window.cargarConfiguracionNegocio();
+            
+            // Si el negocio requiere anticipo y tiene configuración personalizada
+            if (configNegocio?.requiere_anticipo && window.enviarMensajePago) {
+                console.log('💰 Usando mensaje de pago personalizado');
+                await window.enviarMensajePago(datosReserva, configNegocio);
+                return true;
+            }
+            
+            // 🔥 COMPORTAMIENTO ANTERIOR (solo para compatibilidad)
+            console.log('📱 Usando mensaje de pago por defecto (sin configuración de anticipo)');
             const fechaConDia = window.formatFechaCompleta ? 
                 window.formatFechaCompleta(datosReserva.fecha) : 
                 datosReserva.fecha;
@@ -206,12 +213,8 @@ END:VCALENDAR`;
                 window.formatTo12Hour(datosReserva.hora_inicio) : 
                 datosReserva.hora_inicio;
             
-            // 🔥 MONTO FIJO DE 500 CUP (ya no es 40%)
-            const anticipo = 500;
-
-            // 🔥 PERSONALIZADO PARA STUDIOISMA.NAILS
             const mensajePago = 
-`💅 *Studioisma.nails - Confirmación de Turno*
+`💅 *GORDISNAILSBYSANDRA*
 
 ✅ *SOLICITUD DE TURNO REGISTRADA*
 
@@ -220,31 +223,30 @@ END:VCALENDAR`;
 💈 *Servicio:* ${datosReserva.servicio}
 👩‍🎨 *Profesional:* ${datosReserva.profesional_nombre}
 
-💰 *Para confirmar tu turno*, envía el *anticipo de ${anticipo} CUP* por:
+💰 *Para confirmar tu turno*, enviar el *anticipo de 500 cup por:
 
 🏦 *Transferencia bancaria:* 
-   Tárjeta a transferir : 9205 1299 7180 3847
-   Alias: studioisma.pagos.mp
+   Tarjeta a transferir: 9224 0699 9844 5056
+   Número a confirmar: 55002272
 
-📱 *Enviar comprobante a este WhatsApp:* 
-   +53 54646800
+📱 *WhatsApp para comprobantes:* 
+   +53 55002272
 
 ⏳ *Importante:* 
-El turno se cancelará automáticamente si no se confirma el pago dentro de las **2 horas**.
+El turno se cancelará automáticamente si no se confirma el pago dentro de las 2 horas.
 
 ¡Gracias por elegirnos! 💖`;
 
             window.enviarWhatsApp(clienteWhatsapp, mensajePago);
-            console.log('📤 Mensaje con datos de pago enviado al cliente');
             return true;
         } catch (error) {
             console.error('Error enviando datos de pago:', error);
             return false;
         }
-    };
+    }
 
     // ============================================
-    // HANDLE SUBMIT CORREGIDO
+    // HANDLE SUBMIT (CON ESTILOS ORIGINALES)
     // ============================================
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -264,7 +266,6 @@ El turno se cancelará automáticamente si no se confirma el pago dentro de las 
 
             const endTime = calculateEndTime(time, service.duracion);
 
-            // 🔥 CORREGIDO: NO enviar estado, dejar que api.js ponga "Pendiente"
             const bookingData = {
                 cliente_nombre: cliente.nombre,
                 cliente_whatsapp: cliente.whatsapp,
@@ -274,28 +275,19 @@ El turno se cancelará automáticamente si no se confirma el pago dentro de las 
                 profesional_nombre: profesional.nombre,
                 fecha: date,
                 hora_inicio: time,
-                hora_fin: endTime
-                // ❌ ELIMINADO: estado: "Reservado"
+                hora_fin: endTime,
+                estado: "Pendiente"
             };
 
-            console.log('📤 Enviando a api.js (sin estado):', bookingData);
-            
-            // 🔥 CORREGIDO: Usar window.createBooking (la GLOBAL)
-            const result = await window.createBooking(bookingData);
-            
-            console.log('📦 RESULTADO de createBooking:', result);
+            const result = await createBooking(bookingData);
             
             if (result.success && result.data) {
-                console.log('✅ Reserva creada. ESTADO FINAL:', result.data.estado);
-
-                // 🔥 ENVIAR DATOS DE PAGO POR WHATSAPP AL CLIENTE
-                enviarDatosPagoWhatsApp(cliente.whatsapp, result.data);
-
-                // 🔥 NOTIFICAR A LA DUEÑA (solicitud pendiente) - SOLO PUSH
-                if (window.notificarReservaPendiente) {
-                    await window.notificarReservaPendiente(result.data);
-                }
+                console.log('✅ Reserva creada en estado PENDIENTE');
                 
+                // 🔥 1. ENVIAR DATOS DE PAGO POR WHATSAPP AL CLIENTE
+                await enviarDatosPagoWhatsApp(cliente.whatsapp, result.data);
+                
+                // Generar y descargar archivo ICS
                 const icsContent = generarArchivoCalendario(result.data);
                 
                 const fechaSegura = result.data.fecha.replace(/-/g, '');
@@ -308,6 +300,11 @@ El turno se cancelará automáticamente si no se confirma el pago dentro de las 
                 const nombreArchivo = `turno-${fechaSegura}-${horaSegura}-${nombreSeguro}.ics`;
                 
                 descargarArchivoICS(icsContent, nombreArchivo);
+                
+                // 🔥 2. NOTIFICAR A LA DUEÑA (reserva pendiente)
+                if (window.notificarReservaPendiente) {
+                    await window.notificarReservaPendiente(result.data);
+                }
                 
                 onSubmit(result.data);
             }

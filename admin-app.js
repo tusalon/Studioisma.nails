@@ -1,7 +1,7 @@
-// admin-app.js - Panel de administración (VERSIÓN CON ANTICIPOS)
-// CLIENTE: Studioisma.nails
+// admin-app.js - Panel de administración (VERSIÓN CORREGIDA CON WHATSAPP GLOBAL)
+// CLIENTE: GordisNailsbySandra
 
-console.log('🚀 ADMIN-APP.JS VERSIÓN CORREGIDA CON ANTICIPOS - Studioisma.nails');
+console.log('🚀 ADMIN-APP.JS - GordisNailsbySandra');
 
 window.addEventListener('error', function(e) {
     console.error('❌ Error detectado, posible versión antigua:', e.message);
@@ -304,7 +304,7 @@ function AdminApp() {
     const [userRole, setUserRole] = React.useState('admin');
     const [userNivel, setUserNivel] = React.useState(3);
     const [profesional, setProfesional] = React.useState(null);
-    const [nombreNegocio, setNombreNegocio] = React.useState('Studioisma.nails');
+    const [nombreNegocio, setNombreNegocio] = React.useState('Mi Negocio');
     
     const [config, setConfig] = React.useState(null);
     const [configVersion, setConfigVersion] = React.useState(0);
@@ -792,70 +792,63 @@ function AdminApp() {
         });
     }, [userRole, userNivel, profesional]);
 
-    // ============================================
-    // 🔥 FUNCIÓN PARA CONFIRMAR PAGO (CON WHATSAPP AL CLIENTE) - VERSIÓN CON LOGS
-    // ============================================
-    const confirmarPago = async (id, bookingData) => {
-        if (!confirm(`¿Confirmar que se recibió el pago de ${bookingData.cliente_nombre}? El turno pasará a "Reservado".`)) return;
+  // admin-app.js - Panel de administración (VERSIÓN CORREGIDA CON WHATSAPP GLOBAL)
+// + MEJORA EN confirmarPago PARA USAR MENSAJE PERSONALIZADO SI CORRESPONDE
+// CLIENTE: GordisNailsbySandra
+
+console.log('🚀 ADMIN-APP.JS - GordisNailsbySandra');
+
+// ... (todo el código existente se mantiene igual hasta la función confirmarPago)
+
+// ============================================
+// FUNCIÓN PARA CONFIRMAR PAGO (MEJORADA)
+// ============================================
+const confirmarPago = async (id, bookingData) => {
+    if (!confirm(`¿Confirmar que se recibió el pago de ${bookingData.cliente_nombre}? El turno pasará a "Reservado".`)) return;
+    
+    try {
+        console.log(`💰 Confirmando pago para reserva ${id}`);
         
-        try {
-            console.log(`💰 Confirmando pago para reserva ${id}`);
-            console.log('📦 Datos de la reserva:', bookingData);
-            
-            // Cambiar estado a "Reservado"
-            const response = await fetch(
-                `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${getNegocioId()}&id=eq.${id}`,
-                {
-                    method: 'PATCH',
-                    headers: {
-                        'apikey': window.SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ estado: 'Reservado' })
-                }
-            );
-            
-            if (!response.ok) {
-                throw new Error('Error al confirmar pago');
+        // Cambiar estado a "Reservado"
+        const response = await fetch(
+            `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${getNegocioId()}&id=eq.${id}`,
+            {
+                method: 'PATCH',
+                headers: {
+                    'apikey': window.SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ estado: 'Reservado' })
             }
-            
-            console.log('✅ Estado cambiado a Reservado en Supabase');
-            
-            // 🔥 ENVIAR WHATSAPP DE CONFIRMACIÓN AL CLIENTE
-            console.log('📤 Preparando envío de confirmación al cliente...');
-            
-            // Formatear fecha con día de la semana
-            const fechaConDia = window.formatFechaCompleta ? 
-                window.formatFechaCompleta(bookingData.fecha) : 
-                bookingData.fecha;
-            
-            console.log('📅 Fecha formateada:', fechaConDia);
-            
-            // Formatear hora a 12h
-            const horaFormateada = window.formatTo12Hour ? 
-                window.formatTo12Hour(bookingData.hora_inicio) : 
-                bookingData.hora_inicio;
-            
-            console.log('⏰ Hora formateada:', horaFormateada);
-            
-            // Obtener nombre del negocio
-            const nombreNegocio = await window.getNombreNegocio ? 
-                await window.getNombreNegocio() : 
-                'Studioisma.nails';
-            
-            console.log('🏢 Nombre del negocio:', nombreNegocio);
-            
-            // Obtener el teléfono del cliente
-            const telefonoCliente = bookingData.cliente_whatsapp;
-            console.log('📱 Teléfono del cliente (original):', telefonoCliente);
-            
-            // Limpiar el teléfono (por si acaso)
-            const telefonoLimpio = telefonoCliente.replace(/\D/g, '');
-            console.log('📱 Teléfono del cliente (limpio):', telefonoLimpio);
-            
-            // Crear mensaje para el cliente
-            const mensajeCliente = 
+        );
+        
+        if (!response.ok) {
+            throw new Error('Error al confirmar pago');
+        }
+        
+        console.log('📤 Enviando confirmación de turno al cliente...');
+        
+        // 🔥 OBTENER CONFIGURACIÓN DEL NEGOCIO
+        const configNegocio = await window.cargarConfiguracionNegocio();
+        
+        // Formatear fecha con día de la semana
+        const fechaConDia = window.formatFechaCompleta ? 
+            window.formatFechaCompleta(bookingData.fecha) : 
+            bookingData.fecha;
+        
+        // Formatear hora a 12h
+        const horaFormateada = window.formatTo12Hour ? 
+            window.formatTo12Hour(bookingData.hora_inicio) : 
+            bookingData.hora_inicio;
+        
+        // Obtener nombre del negocio
+        const nombreNegocio = configNegocio?.nombre || await window.getNombreNegocio ? 
+            await window.getNombreNegocio() : 
+            'GordisNailsbySandra';
+        
+               // 🔥 SIEMPRE USAR EL MENSAJE BONITO (COMO ERA ANTES)
+        const mensajeCliente = 
 `💅 *${nombreNegocio} - Turno Confirmado* 🎉
 
 Hola *${bookingData.cliente_nombre}*, ¡tu turno ha sido CONFIRMADO!
@@ -870,37 +863,18 @@ Hola *${bookingData.cliente_nombre}*, ¡tu turno ha sido CONFIRMADO!
 Te esperamos 💖
 Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipación.`;
 
-            console.log('💬 Mensaje a enviar:', mensajeCliente);
-            
-            // Verificar si la función enviarWhatsApp existe
-            if (typeof window.enviarWhatsApp !== 'function') {
-                console.error('❌ ERROR: window.enviarWhatsApp NO es una función');
-                console.log('📋 window.enviarWhatsApp:', window.enviarWhatsApp);
-                alert('Error: La función de WhatsApp no está disponible');
-            } else {
-                console.log('✅ window.enviarWhatsApp está disponible, intentando enviar...');
-                
-                // Enviar WhatsApp al cliente
-                const resultado = window.enviarWhatsApp(telefonoCliente, mensajeCliente);
-                console.log('📤 Resultado del envío:', resultado);
-            }
-            
-            // Notificar a la dueña que el turno está confirmado
-            if (window.notificarNuevaReserva) {
-                console.log('📢 Notificando a la dueña...');
-                const reservaConfirmada = { ...bookingData, estado: 'Reservado' };
-                await window.notificarNuevaReserva(reservaConfirmada);
-                console.log('✅ Dueña notificada');
-            }
-            
-            alert('✅ Pago confirmado. Turno reservado y cliente notificado.');
-            fetchBookings(); // Recargar reservas
-            
-        } catch (error) {
-            console.error('❌ Error confirmando pago:', error);
-            alert('❌ Error al confirmar el pago');
-        }
-    };
+        window.enviarWhatsApp(bookingData.cliente_whatsapp, mensajeCliente);
+        
+        alert('✅ Pago confirmado. Turno reservado y cliente notificado.');
+        fetchBookings(); // Recargar reservas
+        
+    } catch (error) {
+        console.error('Error confirmando pago:', error);
+        alert('❌ Error al confirmar el pago');
+    }
+};
+
+// ... (resto del código de admin-app.js se mantiene igual)
 
     // ============================================
     // HANDLE CANCEL CORREGIDO - USA notificarCancelacion
@@ -946,7 +920,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
     };
 
     // ============================================
-    // FILTROS (ACTUALIZADO CON PENDIENTES)
+    // FILTROS
     // ============================================
     const getFilteredBookings = () => {
         console.log('🔄 Aplicando filtros a', bookings.length, 'reservas');
@@ -960,7 +934,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
         let resultado;
         if (statusFilter === 'activas') {
             resultado = filtradas.filter(b => b.estado === 'Reservado');
-        } else if (statusFilter === 'pendientes') {  // 🔥 NUEVO FILTRO
+        } else if (statusFilter === 'pendientes') {
             resultado = filtradas.filter(b => b.estado === 'Pendiente');
         } else if (statusFilter === 'completadas') {
             resultado = filtradas.filter(b => b.estado === 'Completado');
@@ -975,7 +949,6 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
         return resultado;
     };
 
-    // 🔥 NUEVOS CONTADORES
     const activasCount = bookings.filter(b => b.estado === 'Reservado').length;
     const pendientesCount = bookings.filter(b => b.estado === 'Pendiente').length;
     const completadasCount = bookings.filter(b => b.estado === 'Completado').length;
@@ -1099,7 +1072,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                         value={nuevaReservaData.cliente_nombre}
                                         onChange={(e) => setNuevaReservaData({...nuevaReservaData, cliente_nombre: e.target.value})}
                                         className="w-full border rounded-lg px-3 py-2"
-                                        placeholder="Ej: María Pérez"
+                                        placeholder="Ej: Juan Pérez"
                                     />
                                 </div>
 
@@ -1115,7 +1088,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                                 setNuevaReservaData({...nuevaReservaData, cliente_whatsapp: value});
                                             }}
                                             className="w-full px-4 py-2 rounded-r-lg border border-gray-300"
-                                            placeholder="54646800"
+                                            placeholder="55002272"
                                         />
                                     </div>
                                     <p className="text-xs text-gray-400 mt-1">8 dígitos después del +53</p>
@@ -1291,7 +1264,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                             </div>
                         )}
 
-                        {/* SOLO CLIENTES REGISTRADOS */}
+                        {/* SOLO CLIENTES REGISTRADOS - SIN SOLICITUDES PENDIENTES */}
                         <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-green-500">
                             <button
                                 onClick={() => {
@@ -1347,7 +1320,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                     </div>
                 )}
 
-                {/* RESERVAS - VERSIÓN CON ANTICIPOS */}
+                {/* RESERVAS */}
                 {tabActivo === 'reservas' && (
                     <>
                         {userRole === 'profesional' && profesional && (
@@ -1364,7 +1337,6 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                 {filterDate && <button onClick={() => setFilterDate('')} className="text-pink-500 text-sm">Limpiar filtro</button>}
                             </div>
 
-                            {/* FILTROS CON PENDIENTES */}
                             <div className="flex flex-wrap gap-2">
                                 <button onClick={() => setStatusFilter('activas')} className={`px-4 py-2 rounded-lg text-sm font-medium ${statusFilter === 'activas' ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700'}`}>Activas ({activasCount})</button>
                                 <button onClick={() => setStatusFilter('pendientes')} className={`px-4 py-2 rounded-lg text-sm font-medium ${statusFilter === 'pendientes' ? 'bg-yellow-500 text-white' : 'bg-gray-100 text-gray-700'}`}>Pendientes ({pendientesCount})</button>
@@ -1389,7 +1361,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                     filteredBookings.map(b => (
                                         <div key={b.id} className={`bg-white p-4 rounded-xl shadow-sm border-l-4 ${
                                             b.estado === 'Reservado' ? 'border-l-pink-500' :
-                                            b.estado === 'Pendiente' ? 'border-l-yellow-500' :  // 🔥 NUEVO COLOR AMARILLO
+                                            b.estado === 'Pendiente' ? 'border-l-yellow-500' :
                                             b.estado === 'Completado' ? 'border-l-green-500' :
                                             'border-l-red-500'
                                         }`}>
@@ -1406,7 +1378,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                             <div className="flex justify-between items-center mt-3 pt-2 border-t">
                                                 <span className={`px-2 py-1 rounded-full text-xs font-semibold
                                                     ${b.estado === 'Reservado' ? 'bg-pink-100 text-pink-700' : 
-                                                      b.estado === 'Pendiente' ? 'bg-yellow-100 text-yellow-700' :  // 🔥 NUEVO COLOR
+                                                      b.estado === 'Pendiente' ? 'bg-yellow-100 text-yellow-700' :
                                                       b.estado === 'Completado' ? 'bg-green-100 text-green-700' : 
                                                       'bg-red-100 text-red-700'}`}>
                                                     {b.estado}
@@ -1414,7 +1386,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                                 <div className="flex gap-2">
                                                     {b.estado === 'Pendiente' && (
                                                         <button 
-                                                            onClick={() => confirmarPago(b.id, b)}
+                                                            onClick={() => confirmarPago(b.id, b)} 
                                                             className="px-3 py-1 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600 flex items-center gap-1"
                                                         >
                                                             <span>✅</span> Confirmar pago
