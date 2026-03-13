@@ -1,5 +1,5 @@
 // utils/whatsapp-helper.js - VERSIÓN GENÉRICA COMPLETA
-// CON DATOS DE PAGO TAMBIÉN PARA LA DUEÑA EN RESERVAS PENDIENTES
+// CON FORMATO EXACTO DE MENSAJE
 
 console.log('📱 whatsapp-helper.js - VERSIÓN GENÉRICA');
 
@@ -102,7 +102,7 @@ window.enviarNotificacionPush = async function(titulo, mensaje, etiquetas = 'bel
 };
 
 // ============================================
-// FUNCIÓN: ENVIAR MENSAJE DE PAGO PERSONALIZADO (AL CLIENTE)
+// FUNCIÓN: ENVIAR MENSAJE DE PAGO PERSONALIZADO (AL CLIENTE Y DUEÑA)
 // ============================================
 window.enviarMensajePago = async function(booking, configNegocio) {
     try {
@@ -111,7 +111,7 @@ window.enviarMensajePago = async function(booking, configNegocio) {
             return false;
         }
 
-        console.log('💰 Enviando mensaje de pago personalizado al CLIENTE...');
+        console.log('💰 Enviando mensaje de pago personalizado...');
 
         if (!configNegocio) {
             configNegocio = await window.cargarConfiguracionNegocio();
@@ -149,47 +149,32 @@ window.enviarMensajePago = async function(booking, configNegocio) {
 
         const profesional = booking.profesional_nombre || booking.trabajador_nombre || 'No asignada';
 
-        const variables = {
-            '{monto_anticipo}': `$${montoAnticipo}`,
-            '{servicio}': booking.servicio,
-            '{fecha}': fechaConDia,
-            '{hora}': horaFormateada,
-            '{profesional}': profesional,
-            '{cbu}': configNegocio.cbu || '[CBU no configurado]',
-            '{alias}': configNegocio.alias || '[Alias no configurado]',
-            '{titular}': configNegocio.titular || '[Titular no configurado]',
-            '{banco}': configNegocio.banco || '[Banco no configurado]',
-            '{tiempo_vencimiento}': configNegocio.tiempo_vencimiento || 2
-        };
-
-        let mensajeBase = configNegocio.mensaje_pago || 
-`💅 *${configNegocio.nombre || 'Mi Salón'}*
+        // 🔥 FORMATO EXACTO COMO LO PEDISTE
+        const mensajeFinal = 
+`💅 *${configNegocio.nombre || 'Mi Salón'} - Confirmación de Turno*
 
 ✅ *SOLICITUD DE TURNO REGISTRADA*
 
-📅 *Fecha:* {fecha}
-⏰ *Hora:* {hora}
-💈 *Servicio:* {servicio}
-👩‍🎨 *Profesional:* {profesional}
+📅 *Fecha:* ${fechaConDia}
+⏰ *Hora:* ${horaFormateada}
+💈 *Servicio:* ${booking.servicio}
+👩‍🎨 *Profesional:* ${profesional}
 
-💰 *Para confirmar tu turno*, realizá el pago del anticipo de *{monto_anticipo}* a:
+💰 *Para confirmar tu turno*, envía el *anticipo de ${montoAnticipo} CUP* por:
 
-🏦 *Banco:* {banco}
-🔢 *CBU:* {cbu}
-🏷️ *Alias:* {alias}
-👤 *Titular:* {titular}
+🏦 *Transferencia bancaria:* 
+   Tárjeta a transferir : ${configNegocio.cbu || 'XXXX XXXX XXXX XXXX'}
+   Alias: ${configNegocio.alias || 'alias.no.configurado'}
+
+📱 *Enviar comprobante a este WhatsApp:* 
+   +53 ${configNegocio.telefono || '00000000'}
 
 ⏳ *Importante:* 
-Tenés {tiempo_vencimiento} horas para realizar el pago.
-Si no se confirma en ese tiempo, el turno se cancelará automáticamente.
+El turno se cancelará automáticamente si no se confirma el pago dentro de las ${configNegocio.tiempo_vencimiento || 2} horas.
 
 ¡Gracias por elegirnos! 💖`;
 
-        let mensajeFinal = mensajeBase;
-        for (const [key, value] of Object.entries(variables)) {
-            mensajeFinal = mensajeFinal.replace(new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), value);
-        }
-
+        // Enviar al cliente
         window.enviarWhatsApp(booking.cliente_whatsapp, mensajeFinal);
         
         console.log('✅ Mensaje de pago enviado al CLIENTE');
@@ -277,7 +262,6 @@ window.notificarNuevaReserva = async function(booking) {
             
         const profesional = booking.profesional_nombre || booking.trabajador_nombre || 'No asignada';
         
-        // WhatsApp a la dueña
         const mensajeWhatsApp = 
 `🎉 *NUEVA RESERVA - ${config.nombre}*
 
@@ -292,7 +276,6 @@ window.notificarNuevaReserva = async function(booking) {
 
         window.enviarWhatsApp(config.telefono, mensajeWhatsApp);
         
-        // Push notification
         const mensajePush = 
 `🆕 NUEVA RESERVA - ${config.nombre}
 👤 Cliente: ${booking.cliente_nombre}
@@ -328,7 +311,7 @@ window.notificarReservaPendiente = async function(booking) {
 
         const configNegocio = await window.cargarConfiguracionNegocio();
         
-        // 🔥 SI EXISTE LA FUNCIÓN enviarMensajePago, LA USAMOS PARA LA DUEÑA TAMBIÉN
+        // Usar la misma función enviarMensajePago pero para la dueña
         if (window.enviarMensajePago) {
             console.log('💰 Enviando mensaje con datos de pago a la DUEÑA');
             
@@ -359,54 +342,35 @@ window.notificarReservaPendiente = async function(booking) {
 
             const profesional = booking.profesional_nombre || booking.trabajador_nombre || 'No asignada';
 
-            // Preparar variables para el mensaje
-            const variables = {
-                '{monto_anticipo}': `$${montoAnticipo}`,
-                '{servicio}': booking.servicio,
-                '{fecha}': fechaConDia,
-                '{hora}': horaFormateada,
-                '{profesional}': profesional,
-                '{cbu}': configNegocio.cbu || '[CBU no configurado]',
-                '{alias}': configNegocio.alias || '[Alias no configurado]',
-                '{titular}': configNegocio.titular || '[Titular no configurado]',
-                '{banco}': configNegocio.banco || '[Banco no configurado]',
-                '{tiempo_vencimiento}': configNegocio.tiempo_vencimiento || 2
-            };
-
-            // Usar el mensaje personalizado de la BD
-            let mensajeBase = configNegocio.mensaje_pago || 
-`💅 *${configNegocio.nombre || 'Mi Salón'}*
+            // 🔥 MISMO FORMATO QUE EL CLIENTE
+            const mensajeFinal = 
+`💅 *${configNegocio.nombre || 'Mi Salón'} - Confirmación de Turno*
 
 ✅ *SOLICITUD DE TURNO REGISTRADA*
 
-📅 *Fecha:* {fecha}
-⏰ *Hora:* {hora}
-💈 *Servicio:* {servicio}
-👩‍🎨 *Profesional:* {profesional}
+📅 *Fecha:* ${fechaConDia}
+⏰ *Hora:* ${horaFormateada}
+💈 *Servicio:* ${booking.servicio}
+👩‍🎨 *Profesional:* ${profesional}
 
-💰 *Para confirmar tu turno*, realizá el pago del anticipo de *{monto_anticipo}* a:
+💰 *Para confirmar tu turno*, envía el *anticipo de ${montoAnticipo} CUP* por:
 
-🏦 *Banco:* {banco}
-🔢 *CBU:* {cbu}
-🏷️ *Alias:* {alias}
-👤 *Titular:* {titular}
+🏦 *Transferencia bancaria:* 
+   Tárjeta a transferir : ${configNegocio.cbu || 'XXXX XXXX XXXX XXXX'}
+   Alias: ${configNegocio.alias || 'alias.no.configurado'}
+
+📱 *Enviar comprobante a este WhatsApp:* 
+   +53 ${configNegocio.telefono || '00000000'}
 
 ⏳ *Importante:* 
-Tenés {tiempo_vencimiento} horas para realizar el pago.
-Si no se confirma en ese tiempo, el turno se cancelará automáticamente.
+El turno se cancelará automáticamente si no se confirma el pago dentro de las ${configNegocio.tiempo_vencimiento || 2} horas.
 
 ¡Gracias por elegirnos! 💖`;
 
-            // Reemplazar variables
-            let mensajeFinal = mensajeBase;
-            for (const [key, value] of Object.entries(variables)) {
-                mensajeFinal = mensajeFinal.replace(new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), value);
-            }
-
-            // 🔥 ENVIAR A LA DUEÑA (con los mismos datos de pago)
+            // 🔥 ENVIAR A LA DUEÑA
             window.enviarWhatsApp(configNegocio.telefono, mensajeFinal);
             
-            // Push notification (resumen rápido)
+            // Push notification
             const mensajePush = 
 `🆕 RESERVA PENDIENTE - ${configNegocio.nombre}
 👤 Cliente: ${booking.cliente_nombre}
@@ -554,4 +518,4 @@ ${canceladoPor === 'cliente' ? '🔔 Cancelado por cliente' : '🔔 Cancelado po
     }
 };
 
-console.log('✅ whatsapp-helper.js - VERSIÓN GENÉRICA CARGADA (CON DATOS DE PAGO A LA DUEÑA)');
+console.log('✅ whatsapp-helper.js - VERSIÓN GENÉRICA CARGADA (CON FORMATO EXACTO)');
