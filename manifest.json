@@ -2,19 +2,19 @@
   "name": "Studioisma.nails",
   "short_name": "Studioisma",
   "description": "Uñas y belleza - Tu espacio de cuidado personal",
-  "start_url": "/studioisma/",
-  "scope": "/studioisma/",
+  "start_url": "/studioisma.nails/",
+  "scope": "/studioisma.nails/",
   "display": "standalone",
   "background_color": "#ec4899",
   "theme_color": "#ec4899",
   "icons": [
     {
-      "src": "/studioisma/icons/icon-192x192.png",
+      "src": "/studioisma.nails/icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/studioisma/icons/icon-512x512.png",
+      "src": "/studioisma.nails/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
     }

@@ -2,21 +2,21 @@
 
 const CACHE_NAME = 'studioisma-nails-v1';
 const urlsToCache = [
-  '/studioisma/',
-  '/studioisma/index.html',
-  '/studioisma/admin.html',
-  '/studioisma/admin-login.html',
-  '/studioisma/setup-wizard.html',
-  '/studioisma/editar-negocio.html',
-  '/studioisma/manifest.json',
-  '/studioisma/icons/icon-72x72.png',
-  '/studioisma/icons/icon-96x96.png',
-  '/studioisma/icons/icon-128x128.png',
-  '/studioisma/icons/icon-144x144.png',
-  '/studioisma/icons/icon-152x152.png',
-  '/studioisma/icons/icon-192x192.png',
-  '/studioisma/icons/icon-384x384.png',
-  '/studioisma/icons/icon-512x512.png'
+  '/studioisma.nails/',
+  '/studioisma.nails/index.html',
+  '/studioisma.nails/admin.html',
+  '/studioisma.nails/admin-login.html',
+  '/studioisma.nails/setup-wizard.html',
+  '/studioisma.nails/editar-negocio.html',
+  '/studioisma.nails/manifest.json',
+  '/studioisma.nails/icons/icon-72x72.png',
+  '/studioisma.nails/icons/icon-96x96.png',
+  '/studioisma.nails/icons/icon-128x128.png',
+  '/studioisma.nails/icons/icon-144x144.png',
+  '/studioisma.nails/icons/icon-152x152.png',
+  '/studioisma.nails/icons/icon-192x192.png',
+  '/studioisma.nails/icons/icon-384x384.png',
+  '/studioisma.nails/icons/icon-512x512.png'
 ];
 
 // ============================================
@@ -108,7 +108,7 @@ self.addEventListener('fetch', event => {
           }
           // Si no hay cache y es imagen, devolver icon por defecto
           if (event.request.url.match(/\.(jpg|jpeg|png|gif|svg|webp)$/)) {
-            return caches.match('/studioisma/icons/icon-192x192.png');
+            return caches.match('/studioisma.nails/icons/icon-192x192.png');
           }
           return new Response('Error de red', { status: 408 });
         });
