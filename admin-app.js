@@ -1,7 +1,7 @@
-// admin-app.js - Panel de administración (VERSIÓN CORREGIDA CON WHATSAPP GLOBAL)
-// CLIENTE: GordisNailsbySandra
+// admin-app.js - Panel de administración (VERSIÓN GENÉRICA)
+// SIN NINGÚN NOMBRE DE CLIENTE HARCODEADO
 
-console.log('🚀 ADMIN-APP.JS - GordisNailsbySandra');
+console.log('🚀 ADMIN-APP.JS - Panel de administración');
 
 window.addEventListener('error', function(e) {
     console.error('❌ Error detectado, posible versión antigua:', e.message);
@@ -45,7 +45,7 @@ function getNegocioId() {
 }
 
 // ============================================
-// FUNCIONES DE SUPABASE (CORREGIDAS CON FILTRO)
+// FUNCIONES DE SUPABASE
 // ============================================
 
 async function getAllBookings() {
@@ -792,63 +792,55 @@ function AdminApp() {
         });
     }, [userRole, userNivel, profesional]);
 
-  // admin-app.js - Panel de administración (VERSIÓN CORREGIDA CON WHATSAPP GLOBAL)
-// + MEJORA EN confirmarPago PARA USAR MENSAJE PERSONALIZADO SI CORRESPONDE
-// CLIENTE: GordisNailsbySandra
-
-console.log('🚀 ADMIN-APP.JS - GordisNailsbySandra');
-
-// ... (todo el código existente se mantiene igual hasta la función confirmarPago)
-
-// ============================================
-// FUNCIÓN PARA CONFIRMAR PAGO (MEJORADA)
-// ============================================
-const confirmarPago = async (id, bookingData) => {
-    if (!confirm(`¿Confirmar que se recibió el pago de ${bookingData.cliente_nombre}? El turno pasará a "Reservado".`)) return;
-    
-    try {
-        console.log(`💰 Confirmando pago para reserva ${id}`);
+    // ============================================
+    // FUNCIÓN PARA CONFIRMAR PAGO
+    // ============================================
+    const confirmarPago = async (id, bookingData) => {
+        if (!confirm(`¿Confirmar que se recibió el pago de ${bookingData.cliente_nombre}? El turno pasará a "Reservado".`)) return;
         
-        // Cambiar estado a "Reservado"
-        const response = await fetch(
-            `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${getNegocioId()}&id=eq.${id}`,
-            {
-                method: 'PATCH',
-                headers: {
-                    'apikey': window.SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ estado: 'Reservado' })
+        try {
+            console.log(`💰 Confirmando pago para reserva ${id}`);
+            
+            // Cambiar estado a "Reservado"
+            const response = await fetch(
+                `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${getNegocioId()}&id=eq.${id}`,
+                {
+                    method: 'PATCH',
+                    headers: {
+                        'apikey': window.SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ estado: 'Reservado' })
+                }
+            );
+            
+            if (!response.ok) {
+                throw new Error('Error al confirmar pago');
             }
-        );
-        
-        if (!response.ok) {
-            throw new Error('Error al confirmar pago');
-        }
-        
-        console.log('📤 Enviando confirmación de turno al cliente...');
-        
-        // 🔥 OBTENER CONFIGURACIÓN DEL NEGOCIO
-        const configNegocio = await window.cargarConfiguracionNegocio();
-        
-        // Formatear fecha con día de la semana
-        const fechaConDia = window.formatFechaCompleta ? 
-            window.formatFechaCompleta(bookingData.fecha) : 
-            bookingData.fecha;
-        
-        // Formatear hora a 12h
-        const horaFormateada = window.formatTo12Hour ? 
-            window.formatTo12Hour(bookingData.hora_inicio) : 
-            bookingData.hora_inicio;
-        
-        // Obtener nombre del negocio
-        const nombreNegocio = configNegocio?.nombre || await window.getNombreNegocio ? 
-            await window.getNombreNegocio() : 
-            'GordisNailsbySandra';
-        
-               // 🔥 SIEMPRE USAR EL MENSAJE BONITO (COMO ERA ANTES)
-        const mensajeCliente = 
+            
+            console.log('📤 Enviando confirmación de turno al cliente...');
+            
+            // Obtener configuración del negocio
+            const configNegocio = await window.cargarConfiguracionNegocio();
+            
+            // Formatear fecha con día de la semana
+            const fechaConDia = window.formatFechaCompleta ? 
+                window.formatFechaCompleta(bookingData.fecha) : 
+                bookingData.fecha;
+            
+            // Formatear hora a 12h
+            const horaFormateada = window.formatTo12Hour ? 
+                window.formatTo12Hour(bookingData.hora_inicio) : 
+                bookingData.hora_inicio;
+            
+            // Obtener nombre del negocio
+            const nombreNegocio = configNegocio?.nombre || await window.getNombreNegocio ? 
+                await window.getNombreNegocio() : 
+                'Mi Negocio';
+            
+            // Mensaje de confirmación (siempre el mismo formato)
+            const mensajeCliente = 
 `💅 *${nombreNegocio} - Turno Confirmado* 🎉
 
 Hola *${bookingData.cliente_nombre}*, ¡tu turno ha sido CONFIRMADO!
@@ -863,21 +855,19 @@ Hola *${bookingData.cliente_nombre}*, ¡tu turno ha sido CONFIRMADO!
 Te esperamos 💖
 Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipación.`;
 
-        window.enviarWhatsApp(bookingData.cliente_whatsapp, mensajeCliente);
-        
-        alert('✅ Pago confirmado. Turno reservado y cliente notificado.');
-        fetchBookings(); // Recargar reservas
-        
-    } catch (error) {
-        console.error('Error confirmando pago:', error);
-        alert('❌ Error al confirmar el pago');
-    }
-};
-
-// ... (resto del código de admin-app.js se mantiene igual)
+            window.enviarWhatsApp(bookingData.cliente_whatsapp, mensajeCliente);
+            
+            alert('✅ Pago confirmado. Turno reservado y cliente notificado.');
+            fetchBookings(); // Recargar reservas
+            
+        } catch (error) {
+            console.error('Error confirmando pago:', error);
+            alert('❌ Error al confirmar el pago');
+        }
+    };
 
     // ============================================
-    // HANDLE CANCEL CORREGIDO - USA notificarCancelacion
+    // HANDLE CANCEL
     // ============================================
     const handleCancel = async (id, bookingData) => {
         if (!confirm(`¿Cancelar reserva de ${bookingData.cliente_nombre}?`)) return;
@@ -889,10 +879,6 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
             // Marcar que fue cancelado por admin
             bookingData.cancelado_por = 'admin';
             
-            // ÚNICA LLAMADA - notificarCancelacion ya maneja:
-            // - WhatsApp al cliente
-            // - WhatsApp a la dueña
-            // - ntfy push
             if (window.notificarCancelacion) {
                 await window.notificarCancelacion(bookingData);
             }
@@ -995,7 +981,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
         <div className="min-h-screen bg-pink-50 p-3 sm:p-6">
             <div className="max-w-6xl mx-auto space-y-4">
                 
-                {/* ===== HEADER CON ESTILO FEMENINO ===== */}
+                {/* HEADER */}
                 <div className="bg-white p-4 rounded-xl shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-l-4 border-pink-500">
                     {/* Título y logo */}
                     <div className="flex items-center gap-3">
@@ -1264,7 +1250,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                             </div>
                         )}
 
-                        {/* SOLO CLIENTES REGISTRADOS - SIN SOLICITUDES PENDIENTES */}
+                        {/* CLIENTES REGISTRADOS */}
                         <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-green-500">
                             <button
                                 onClick={() => {

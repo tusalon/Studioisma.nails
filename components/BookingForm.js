@@ -1,6 +1,5 @@
-// components/BookingForm.js - VERSIÓN IPHONE (con estilos originales)
-// MODIFICADO PARA GORDISNAILS - ENVÍO DE PAGO Y CONFIRMACIÓN POR WHATSAPP
-// + USO DE CONFIGURACIÓN DE ANTICIPO
+// components/BookingForm.js - VERSIÓN GENÉRICA
+// SIN NINGÚN NOMBRE DE CLIENTE HARCODEADO
 
 function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cliente }) {
     const [submitting, setSubmitting] = React.useState(false);
@@ -65,9 +64,9 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
     }
 
     // ============================================
-    // GENERAR ARCHIVO .ICS
+    // GENERAR ARCHIVO .ICS (COMPLETAMENTE GENÉRICO)
     // ============================================
-    function generarArchivoCalendario(bookingData) {
+    function generarArchivoCalendario(bookingData, nombreNegocio) {
         const uid = generarUUID();
         
         const dtstart = formatearFechaUTC(bookingData.fecha, bookingData.hora_inicio);
@@ -109,13 +108,13 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
         const linea5 = `Client: ${bookingData.cliente_nombre}`;
         const linea6 = `WhatsApp: +53 ${bookingData.cliente_whatsapp}`;
         const linea7 = ``;
-        const linea8 = `GordisNailsbySandra`;
+        const linea8 = nombreNegocio; // ← AHORA VIENE DE LA CONFIGURACIÓN
         
         const descripcion = `${partirLinea(linea1)}\n${partirLinea(linea2)}\n${partirLinea(linea3)}\n${partirLinea(linea4)}\n${partirLinea(linea5)}\n${partirLinea(linea6)}\n${linea7}\n${linea8}`;
         
         return `BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//GordisNails//Setmore//EN
+PRODID:-//${nombreNegocio}//Setmore//EN
 METHOD:REQUEST
 BEGIN:VTIMEZONE
 TZID:America/Havana
@@ -145,10 +144,10 @@ DTSTART:${dtstart}
 DTEND:${dtend}
 SUMMARY:${bookingData.servicio} with ${bookingData.profesional_nombre}
 TRANSP:OPAQUE
-LOCATION:GordisNailsbySandra
+LOCATION:${nombreNegocio}
 DESCRIPTION:${descripcion}
-ORGANIZER;CN="GordisNailsbySandra":mailto:gordis@email.com
-ATTENDEE;ROLE=CHAIR;CUTYPE=INDIVIDUAL;RSVP=FALSE;CN="GordisNailsbySandra":MAILTO:gordis@email.com
+ORGANIZER;CN="${nombreNegocio}":mailto:info@${nombreNegocio.replace(/\s+/g, '').toLowerCase()}.com
+ATTENDEE;ROLE=CHAIR;CUTYPE=INDIVIDUAL;RSVP=FALSE;CN="${nombreNegocio}":MAILTO:info@${nombreNegocio.replace(/\s+/g, '').toLowerCase()}.com
 ATTENDEE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;RSVP=FALSE;CN="${bookingData.cliente_nombre}":MAILTO:cliente@email.com
 STATUS:CONFIRMED
 CLASS:PUBLIC
@@ -203,8 +202,8 @@ END:VCALENDAR`;
                 return true;
             }
             
-            // 🔥 COMPORTAMIENTO ANTERIOR (solo para compatibilidad)
-            console.log('📱 Usando mensaje de pago por defecto (sin configuración de anticipo)');
+            // 🔥 MENSAJE GENÉRICO (sin nombres de clientes)
+            console.log('📱 Usando mensaje de pago genérico');
             const fechaConDia = window.formatFechaCompleta ? 
                 window.formatFechaCompleta(datosReserva.fecha) : 
                 datosReserva.fecha;
@@ -213,8 +212,10 @@ END:VCALENDAR`;
                 window.formatTo12Hour(datosReserva.hora_inicio) : 
                 datosReserva.hora_inicio;
             
+            const nombreNegocio = configNegocio?.nombre || 'Mi Negocio';
+            
             const mensajePago = 
-`💅 *GORDISNAILSBYSANDRA*
+`💅 *${nombreNegocio}*
 
 ✅ *SOLICITUD DE TURNO REGISTRADA*
 
@@ -223,17 +224,12 @@ END:VCALENDAR`;
 💈 *Servicio:* ${datosReserva.servicio}
 👩‍🎨 *Profesional:* ${datosReserva.profesional_nombre}
 
-💰 *Para confirmar tu turno*, enviar el *anticipo de 500 cup por:
+💰 *Para confirmar tu turno*, contactanos para coordinar el pago.
 
-🏦 *Transferencia bancaria:* 
-   Tarjeta a transferir: 9224 0699 9844 5056
-   Número a confirmar: 55002272
-
-📱 *WhatsApp para comprobantes:* 
-   +53 55002272
+📱 *WhatsApp:* +53 ${configNegocio?.telefono || '00000000'}
 
 ⏳ *Importante:* 
-El turno se cancelará automáticamente si no se confirma el pago dentro de las 2 horas.
+El turno se cancelará automáticamente si no se confirma dentro de las 2 horas.
 
 ¡Gracias por elegirnos! 💖`;
 
@@ -284,11 +280,15 @@ El turno se cancelará automáticamente si no se confirma el pago dentro de las 
             if (result.success && result.data) {
                 console.log('✅ Reserva creada en estado PENDIENTE');
                 
+                // Obtener nombre del negocio para el archivo ICS
+                const configNegocio = await window.cargarConfiguracionNegocio();
+                const nombreNegocio = configNegocio?.nombre || 'Mi Negocio';
+                
                 // 🔥 1. ENVIAR DATOS DE PAGO POR WHATSAPP AL CLIENTE
                 await enviarDatosPagoWhatsApp(cliente.whatsapp, result.data);
                 
-                // Generar y descargar archivo ICS
-                const icsContent = generarArchivoCalendario(result.data);
+                // Generar y descargar archivo ICS (con nombre genérico)
+                const icsContent = generarArchivoCalendario(result.data, nombreNegocio);
                 
                 const fechaSegura = result.data.fecha.replace(/-/g, '');
                 const horaSegura = result.data.hora_inicio.replace(':', '');
