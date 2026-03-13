@@ -184,6 +184,14 @@ window.getNtfyTopic = async function() {
 };
 
 /**
+ * 🔥 NUEVA FUNCIÓN: Obtiene si el negocio requiere anticipo
+ */
+window.getRequiereAnticipo = async function() {
+    const config = await window.cargarConfiguracionNegocio();
+    return config?.requiere_anticipo || false;
+};
+
+/**
  * Verifica si el negocio ya está configurado
  */
 window.negocioConfigurado = async function() {

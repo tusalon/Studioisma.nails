@@ -1,5 +1,5 @@
 // components/BookingForm.js - VERSIÓN GENÉRICA
-// SIN NINGÚN NOMBRE DE CLIENTE HARCODEADO
+// CON LÓGICA CORREGIDA DE ANTICIPO
 
 function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cliente }) {
     const [submitting, setSubmitting] = React.useState(false);
@@ -108,7 +108,7 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
         const linea5 = `Client: ${bookingData.cliente_nombre}`;
         const linea6 = `WhatsApp: +53 ${bookingData.cliente_whatsapp}`;
         const linea7 = ``;
-        const linea8 = nombreNegocio; // ← AHORA VIENE DE LA CONFIGURACIÓN
+        const linea8 = nombreNegocio;
         
         const descripcion = `${partirLinea(linea1)}\n${partirLinea(linea2)}\n${partirLinea(linea3)}\n${partirLinea(linea4)}\n${partirLinea(linea5)}\n${partirLinea(linea6)}\n${linea7}\n${linea8}`;
         
@@ -188,22 +188,23 @@ END:VCALENDAR`;
     }
 
     // ============================================
-    // 🆕 FUNCIÓN ACTUALIZADA: ENVÍA DATOS DE PAGO SEGÚN CONFIGURACIÓN
+    // FUNCIÓN ACTUALIZADA: ENVÍA DATOS DE PAGO SEGÚN CONFIGURACIÓN
     // ============================================
     async function enviarDatosPagoWhatsApp(clienteWhatsapp, datosReserva) {
         try {
             // Cargar configuración del negocio
             const configNegocio = await window.cargarConfiguracionNegocio();
             
-            // Si el negocio requiere anticipo y tiene configuración personalizada
-            if (configNegocio?.requiere_anticipo && window.enviarMensajePago) {
-                console.log('💰 Usando mensaje de pago personalizado');
+            // 🔥 VERIFICACIÓN ESTRICTA: SOLO si es true
+            if (configNegocio?.requiere_anticipo === true && window.enviarMensajePago) {
+                console.log('💰 Usando mensaje de pago personalizado (requiere anticipo)');
                 await window.enviarMensajePago(datosReserva, configNegocio);
                 return true;
             }
             
-            // 🔥 MENSAJE GENÉRICO (sin nombres de clientes)
-            console.log('📱 Usando mensaje de pago genérico');
+            // 🔥 SI ES false O no está definido, NO usa anticipo
+            console.log('📱 El negocio NO requiere anticipo, confirmando reserva directamente');
+            
             const fechaConDia = window.formatFechaCompleta ? 
                 window.formatFechaCompleta(datosReserva.fecha) : 
                 datosReserva.fecha;
@@ -212,29 +213,21 @@ END:VCALENDAR`;
                 window.formatTo12Hour(datosReserva.hora_inicio) : 
                 datosReserva.hora_inicio;
             
-            const nombreNegocio = configNegocio?.nombre || 'Mi Negocio';
-            
-            const mensajePago = 
-`💅 *${nombreNegocio}*
+            const mensajeConfirmacion = 
+`✅ *${configNegocio?.nombre || 'Mi Salón'} - Turno Reservado*
 
-✅ *SOLICITUD DE TURNO REGISTRADA*
+Hola *${datosReserva.cliente_nombre}*, tu turno ha sido confirmado.
 
 📅 *Fecha:* ${fechaConDia}
 ⏰ *Hora:* ${horaFormateada}
 💈 *Servicio:* ${datosReserva.servicio}
 👩‍🎨 *Profesional:* ${datosReserva.profesional_nombre}
 
-💰 *Para confirmar tu turno*, contactanos para coordinar el pago.
+Te esperamos! 💖`;
 
-📱 *WhatsApp:* +53 ${configNegocio?.telefono || '00000000'}
-
-⏳ *Importante:* 
-El turno se cancelará automáticamente si no se confirma dentro de las 2 horas.
-
-¡Gracias por elegirnos! 💖`;
-
-            window.enviarWhatsApp(clienteWhatsapp, mensajePago);
+            window.enviarWhatsApp(clienteWhatsapp, mensajeConfirmacion);
             return true;
+            
         } catch (error) {
             console.error('Error enviando datos de pago:', error);
             return false;
@@ -242,7 +235,7 @@ El turno se cancelará automáticamente si no se confirma dentro de las 2 horas.
     }
 
     // ============================================
-    // HANDLE SUBMIT (CON ESTILOS ORIGINALES)
+    // HANDLE SUBMIT
     // ============================================
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -272,7 +265,7 @@ El turno se cancelará automáticamente si no se confirma dentro de las 2 horas.
                 fecha: date,
                 hora_inicio: time,
                 hora_fin: endTime,
-                estado: "Pendiente"
+                estado: "Pendiente"  // Siempre Pendiente hasta confirmar pago
             };
 
             const result = await createBooking(bookingData);
@@ -282,12 +275,12 @@ El turno se cancelará automáticamente si no se confirma dentro de las 2 horas.
                 
                 // Obtener nombre del negocio para el archivo ICS
                 const configNegocio = await window.cargarConfiguracionNegocio();
-                const nombreNegocio = configNegocio?.nombre || 'Mi Negocio';
+                const nombreNegocio = configNegocio?.nombre || 'Mi Salón';
                 
-                // 🔥 1. ENVIAR DATOS DE PAGO POR WHATSAPP AL CLIENTE
+                // 🔥 1. ENVIAR WHATSAPP (CON O SIN ANTICIPO SEGÚN CONFIG)
                 await enviarDatosPagoWhatsApp(cliente.whatsapp, result.data);
                 
-                // Generar y descargar archivo ICS (con nombre genérico)
+                // Generar y descargar archivo ICS
                 const icsContent = generarArchivoCalendario(result.data, nombreNegocio);
                 
                 const fechaSegura = result.data.fecha.replace(/-/g, '');
@@ -317,7 +310,7 @@ El turno se cancelará automáticamente si no se confirma dentro de las 2 horas.
     };
 
     // ============================================
-    // RENDER (CON ESTILOS ORIGINALES COMPLETOS)
+    // RENDER
     // ============================================
     return (
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4 animate-fade-in">

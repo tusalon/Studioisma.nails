@@ -1,5 +1,5 @@
-// utils/whatsapp-helper.js - VERSIÓN GENÉRICA
-// SIN NINGÚN NOMBRE DE CLIENTE HARCODEADO
+// utils/whatsapp-helper.js - VERSIÓN GENÉRICA COMPLETA
+// CON FUNCIONES PARA ANTICIPOS Y CONFIRMACIÓN DE PAGO
 
 console.log('📱 whatsapp-helper.js - VERSIÓN GENÉRICA');
 
@@ -102,7 +102,7 @@ window.enviarNotificacionPush = async function(titulo, mensaje, etiquetas = 'bel
 };
 
 // ============================================
-// FUNCIÓN: ENVIAR MENSAJE DE PAGO PERSONALIZADO
+// FUNCIÓN: ENVIAR MENSAJE DE PAGO PERSONALIZADO (CUANDO SE RESERVA)
 // ============================================
 window.enviarMensajePago = async function(booking, configNegocio) {
     try {
@@ -197,6 +197,63 @@ Si no se confirma en ese tiempo, el turno se cancelará automáticamente.
 
     } catch (error) {
         console.error('Error en enviarMensajePago:', error);
+        return false;
+    }
+};
+
+// ============================================
+// 🆕 NUEVA FUNCIÓN: ENVIAR CONFIRMACIÓN DE PAGO (MENSAJE BONITO)
+// ============================================
+window.enviarConfirmacionPago = async function(booking, configNegocio) {
+    try {
+        if (!booking) {
+            console.error('❌ No hay datos de reserva');
+            return false;
+        }
+
+        console.log('🎉 Enviando confirmación de pago al cliente...');
+
+        if (!configNegocio) {
+            configNegocio = await window.cargarConfiguracionNegocio();
+        }
+
+        // Formatear fecha con día de la semana
+        const fechaConDia = window.formatFechaCompleta ? 
+            window.formatFechaCompleta(booking.fecha) : 
+            booking.fecha;
+        
+        // Formatear hora a 12h
+        const horaFormateada = window.formatTo12Hour ? 
+            window.formatTo12Hour(booking.hora_inicio) : 
+            booking.hora_inicio;
+
+        // Obtener nombre del negocio
+        const nombreNegocio = configNegocio?.nombre || 'Mi Salón';
+
+        // 🔥 MENSAJE BONITO (como el que mostraste)
+        const mensajeConfirmacion = 
+`💅 *${nombreNegocio} - Turno Confirmado* 🎉
+
+Hola *${booking.cliente_nombre}*, ¡tu turno ha sido CONFIRMADO!
+
+📅 *Fecha:* ${fechaConDia}
+⏰ *Hora:* ${horaFormateada}
+💈 *Servicio:* ${booking.servicio}
+👩‍🎨 *Profesional:* ${booking.profesional_nombre || booking.trabajador_nombre}
+
+✅ *Pago recibido correctamente*
+
+Te esperamos 💖
+Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipación.`;
+
+        // Enviar WhatsApp al cliente
+        window.enviarWhatsApp(booking.cliente_whatsapp, mensajeConfirmacion);
+        
+        console.log('✅ Mensaje de confirmación de pago enviado');
+        return true;
+
+    } catch (error) {
+        console.error('Error en enviarConfirmacionPago:', error);
         return false;
     }
 };

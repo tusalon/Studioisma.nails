@@ -839,8 +839,12 @@ function AdminApp() {
                 await window.getNombreNegocio() : 
                 'Mi Negocio';
             
-            // Mensaje de confirmación (siempre el mismo formato)
-            const mensajeCliente = 
+            // 🔥 USAR LA NUEVA FUNCIÓN CENTRALIZADA
+if (window.enviarConfirmacionPago) {
+    await window.enviarConfirmacionPago(bookingData, configNegocio);
+} else {
+    // Fallback por si no existe la función
+    const mensajeCliente = 
 `💅 *${nombreNegocio} - Turno Confirmado* 🎉
 
 Hola *${bookingData.cliente_nombre}*, ¡tu turno ha sido CONFIRMADO!
@@ -855,17 +859,8 @@ Hola *${bookingData.cliente_nombre}*, ¡tu turno ha sido CONFIRMADO!
 Te esperamos 💖
 Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipación.`;
 
-            window.enviarWhatsApp(bookingData.cliente_whatsapp, mensajeCliente);
-            
-            alert('✅ Pago confirmado. Turno reservado y cliente notificado.');
-            fetchBookings(); // Recargar reservas
-            
-        } catch (error) {
-            console.error('Error confirmando pago:', error);
-            alert('❌ Error al confirmar el pago');
-        }
-    };
-
+    window.enviarWhatsApp(bookingData.cliente_whatsapp, mensajeCliente);
+}
     // ============================================
     // HANDLE CANCEL
     // ============================================

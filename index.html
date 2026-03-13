@@ -16,11 +16,18 @@
     <link rel="apple-touch-icon" href="icons/icon-192x192.png">
     <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png">
     
-    <!-- Script para service worker -->
+    <!-- Script para service worker (VERSIÓN DINÁMICA) -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
+                // Detectar la ruta base automáticamente
+                const pathSegments = window.location.pathname.split('/');
+                const basePath = pathSegments.length > 2 ? '/' + pathSegments[1] : '';
+                const swPath = basePath ? `${basePath}/sw.js` : '/sw.js';
+                
+                console.log('🔄 Registrando Service Worker en:', swPath);
+                
+                navigator.serviceWorker.register(swPath)
                     .then(registration => {
                         console.log('✅ Service Worker registrado:', registration.scope);
                     })
