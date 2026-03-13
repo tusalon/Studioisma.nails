@@ -1,5 +1,5 @@
 // components/BookingForm.js - VERSIÓN GENÉRICA
-// CON LÓGICA CORREGIDA DE ANTICIPO
+// CON LÓGICA COMPLETA DE NOTIFICACIONES (PUSH SIEMPRE)
 
 function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cliente }) {
     const [submitting, setSubmitting] = React.useState(false);
@@ -64,7 +64,7 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
     }
 
     // ============================================
-    // GENERAR ARCHIVO .ICS (COMPLETAMENTE GENÉRICO)
+    // GENERAR ARCHIVO .ICS
     // ============================================
     function generarArchivoCalendario(bookingData, nombreNegocio) {
         const uid = generarUUID();
@@ -188,23 +188,19 @@ END:VCALENDAR`;
     }
 
     // ============================================
-    // FUNCIÓN ACTUALIZADA: ENVÍA DATOS DE PAGO SEGÚN CONFIGURACIÓN
+    // FUNCIÓN: ENVIAR WHATSAPP AL CLIENTE
     // ============================================
-    async function enviarDatosPagoWhatsApp(clienteWhatsapp, datosReserva) {
+    async function enviarDatosPagoWhatsApp(clienteWhatsapp, datosReserva, configNegocio) {
         try {
-            // Cargar configuración del negocio
-            const configNegocio = await window.cargarConfiguracionNegocio();
-            
-            // 🔥 VERIFICACIÓN ESTRICTA: SOLO si es true
+            // Si requiere anticipo, enviar mensaje con datos de pago
             if (configNegocio?.requiere_anticipo === true && window.enviarMensajePago) {
-                console.log('💰 Usando mensaje de pago personalizado (requiere anticipo)');
+                console.log('💰 Cliente: mensaje de pago (requiere anticipo)');
                 await window.enviarMensajePago(datosReserva, configNegocio);
                 return true;
             }
             
-            // 🔥 SI ES false O no está definido, NO usa anticipo
-            console.log('📱 El negocio NO requiere anticipo, confirmando reserva directamente');
-            
+            // Si NO requiere anticipo, enviar mensaje de confirmación simple
+            console.log('📱 Cliente: mensaje de confirmación (sin anticipo)');
             const fechaConDia = window.formatFechaCompleta ? 
                 window.formatFechaCompleta(datosReserva.fecha) : 
                 datosReserva.fecha;
@@ -214,28 +210,28 @@ END:VCALENDAR`;
                 datosReserva.hora_inicio;
             
             const mensajeConfirmacion = 
-`✅ *${configNegocio?.nombre || 'Mi Salón'} - Turno Reservado*
+`✅ *${configNegocio?.nombre || 'Mi Salón'} - Turno Confirmado*
 
-Hola *${datosReserva.cliente_nombre}*, tu turno ha sido confirmado.
+Hola *${datosReserva.cliente_nombre}*, tu turno ha sido agendado.
 
 📅 *Fecha:* ${fechaConDia}
 ⏰ *Hora:* ${horaFormateada}
 💈 *Servicio:* ${datosReserva.servicio}
 👩‍🎨 *Profesional:* ${datosReserva.profesional_nombre}
 
-Te esperamos! 💖`;
+¡Te esperamos! 💖`;
 
             window.enviarWhatsApp(clienteWhatsapp, mensajeConfirmacion);
             return true;
             
         } catch (error) {
-            console.error('Error enviando datos de pago:', error);
+            console.error('Error enviando WhatsApp:', error);
             return false;
         }
     }
 
     // ============================================
-    // HANDLE SUBMIT
+    // HANDLE SUBMIT (CORREGIDO - CON PUSH SIEMPRE)
     // ============================================
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -254,7 +250,12 @@ Te esperamos! 💖`;
             }
 
             const endTime = calculateEndTime(time, service.duracion);
+            
+            // Obtener configuración del negocio
+            const configNegocio = await window.cargarConfiguracionNegocio();
+            const requiereAnticipo = configNegocio?.requiere_anticipo === true;
 
+            // Crear reserva con estado dinámico
             const bookingData = {
                 cliente_nombre: cliente.nombre,
                 cliente_whatsapp: cliente.whatsapp,
@@ -265,20 +266,34 @@ Te esperamos! 💖`;
                 fecha: date,
                 hora_inicio: time,
                 hora_fin: endTime,
-                estado: "Pendiente"  // Siempre Pendiente hasta confirmar pago
+                estado: requiereAnticipo ? "Pendiente" : "Reservado"
             };
 
             const result = await createBooking(bookingData);
             
             if (result.success && result.data) {
-                console.log('✅ Reserva creada en estado PENDIENTE');
+                console.log(`✅ Reserva creada en estado ${result.data.estado}`);
                 
-                // Obtener nombre del negocio para el archivo ICS
-                const configNegocio = await window.cargarConfiguracionNegocio();
+                // Obtener nombre del negocio
                 const nombreNegocio = configNegocio?.nombre || 'Mi Salón';
                 
-                // 🔥 1. ENVIAR WHATSAPP (CON O SIN ANTICIPO SEGÚN CONFIG)
-                await enviarDatosPagoWhatsApp(cliente.whatsapp, result.data);
+                // 🔥 1. ENVIAR WHATSAPP AL CLIENTE
+                await enviarDatosPagoWhatsApp(cliente.whatsapp, result.data, configNegocio);
+                
+                // 🔥 2. NOTIFICAR A LA DUEÑA (WHATSAPP + PUSH NTFY SIEMPRE)
+                if (requiereAnticipo) {
+                    // CON ANTICIPO: Mensaje con datos de pago + push pendiente
+                    if (window.notificarReservaPendiente) {
+                        await window.notificarReservaPendiente(result.data);
+                    }
+                    console.log('📱 Dueña notificada: RESERVA PENDIENTE DE PAGO (con datos + push)');
+                } else {
+                    // SIN ANTICIPO: Mensaje de nuevo turno + push también
+                    if (window.notificarNuevaReserva) {
+                        await window.notificarNuevaReserva(result.data);
+                    }
+                    console.log('📱 Dueña notificada: NUEVO TURNO AGENDADO (con push)');
+                }
                 
                 // Generar y descargar archivo ICS
                 const icsContent = generarArchivoCalendario(result.data, nombreNegocio);
@@ -293,11 +308,6 @@ Te esperamos! 💖`;
                 const nombreArchivo = `turno-${fechaSegura}-${horaSegura}-${nombreSeguro}.ics`;
                 
                 descargarArchivoICS(icsContent, nombreArchivo);
-                
-                // 🔥 2. NOTIFICAR A LA DUEÑA (reserva pendiente)
-                if (window.notificarReservaPendiente) {
-                    await window.notificarReservaPendiente(result.data);
-                }
                 
                 onSubmit(result.data);
             }
