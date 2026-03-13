@@ -1,5 +1,5 @@
 // utils/whatsapp-helper.js - VERSIÓN GENÉRICA COMPLETA
-// CON PUSH TAMBIÉN EN notificarNuevaReserva
+// CON DATOS DE PAGO TAMBIÉN PARA LA DUEÑA EN RESERVAS PENDIENTES
 
 console.log('📱 whatsapp-helper.js - VERSIÓN GENÉRICA');
 
@@ -102,7 +102,7 @@ window.enviarNotificacionPush = async function(titulo, mensaje, etiquetas = 'bel
 };
 
 // ============================================
-// FUNCIÓN: ENVIAR MENSAJE DE PAGO PERSONALIZADO (CUANDO SE RESERVA CON ANTICIPO)
+// FUNCIÓN: ENVIAR MENSAJE DE PAGO PERSONALIZADO (AL CLIENTE)
 // ============================================
 window.enviarMensajePago = async function(booking, configNegocio) {
     try {
@@ -111,7 +111,7 @@ window.enviarMensajePago = async function(booking, configNegocio) {
             return false;
         }
 
-        console.log('💰 Enviando mensaje de pago personalizado...');
+        console.log('💰 Enviando mensaje de pago personalizado al CLIENTE...');
 
         if (!configNegocio) {
             configNegocio = await window.cargarConfiguracionNegocio();
@@ -192,7 +192,7 @@ Si no se confirma en ese tiempo, el turno se cancelará automáticamente.
 
         window.enviarWhatsApp(booking.cliente_whatsapp, mensajeFinal);
         
-        console.log('✅ Mensaje de pago enviado al cliente');
+        console.log('✅ Mensaje de pago enviado al CLIENTE');
         return true;
 
     } catch (error) {
@@ -254,7 +254,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
 };
 
 // ============================================
-// NOTIFICACIÓN DE NUEVA RESERVA (SIN ANTICIPO) - CON PUSH AGREGADO
+// NOTIFICACIÓN DE NUEVA RESERVA (SIN ANTICIPO) - CON PUSH
 // ============================================
 window.notificarNuevaReserva = async function(booking) {
     try {
@@ -292,7 +292,7 @@ window.notificarNuevaReserva = async function(booking) {
 
         window.enviarWhatsApp(config.telefono, mensajeWhatsApp);
         
-        // 🔥 PUSH NOTIFICATION TAMBIÉN PARA NUEVA RESERVA
+        // Push notification
         const mensajePush = 
 `🆕 NUEVA RESERVA - ${config.nombre}
 👤 Cliente: ${booking.cliente_nombre}
@@ -315,7 +315,7 @@ window.notificarNuevaReserva = async function(booking) {
 };
 
 // ============================================
-// NOTIFICACIÓN DE RESERVA PENDIENTE (CON ANTICIPO) - CON PUSH
+// NOTIFICACIÓN DE RESERVA PENDIENTE (CON ANTICIPO) - CON DATOS DE PAGO A LA DUEÑA
 // ============================================
 window.notificarReservaPendiente = async function(booking) {
     try {
@@ -324,8 +324,107 @@ window.notificarReservaPendiente = async function(booking) {
             return false;
         }
 
-        console.log('📤 Procesando notificación de RESERVA PENDIENTE (CON PUSH)');
+        console.log('📤 Procesando notificación de RESERVA PENDIENTE (CON DATOS DE PAGO A LA DUEÑA)');
 
+        const configNegocio = await window.cargarConfiguracionNegocio();
+        
+        // 🔥 SI EXISTE LA FUNCIÓN enviarMensajePago, LA USAMOS PARA LA DUEÑA TAMBIÉN
+        if (window.enviarMensajePago) {
+            console.log('💰 Enviando mensaje con datos de pago a la DUEÑA');
+            
+            // Calcular monto del anticipo
+            let montoAnticipo = 0;
+            if (configNegocio.tipo_anticipo === 'fijo') {
+                montoAnticipo = configNegocio.valor_anticipo || 0;
+            } else {
+                let precioServicio = 0;
+                if (window.salonServicios) {
+                    const servicios = await window.salonServicios.getAll(true);
+                    const servicio = servicios.find(s => s.nombre === booking.servicio);
+                    if (servicio) {
+                        precioServicio = servicio.precio;
+                    }
+                }
+                const porcentaje = (configNegocio.valor_anticipo || 0) / 100;
+                montoAnticipo = Math.round(precioServicio * porcentaje);
+            }
+
+            const fechaConDia = window.formatFechaCompleta ? 
+                window.formatFechaCompleta(booking.fecha) : 
+                booking.fecha;
+            
+            const horaFormateada = window.formatTo12Hour ? 
+                window.formatTo12Hour(booking.hora_inicio) : 
+                booking.hora_inicio;
+
+            const profesional = booking.profesional_nombre || booking.trabajador_nombre || 'No asignada';
+
+            // Preparar variables para el mensaje
+            const variables = {
+                '{monto_anticipo}': `$${montoAnticipo}`,
+                '{servicio}': booking.servicio,
+                '{fecha}': fechaConDia,
+                '{hora}': horaFormateada,
+                '{profesional}': profesional,
+                '{cbu}': configNegocio.cbu || '[CBU no configurado]',
+                '{alias}': configNegocio.alias || '[Alias no configurado]',
+                '{titular}': configNegocio.titular || '[Titular no configurado]',
+                '{banco}': configNegocio.banco || '[Banco no configurado]',
+                '{tiempo_vencimiento}': configNegocio.tiempo_vencimiento || 2
+            };
+
+            // Usar el mensaje personalizado de la BD
+            let mensajeBase = configNegocio.mensaje_pago || 
+`💅 *${configNegocio.nombre || 'Mi Salón'}*
+
+✅ *SOLICITUD DE TURNO REGISTRADA*
+
+📅 *Fecha:* {fecha}
+⏰ *Hora:* {hora}
+💈 *Servicio:* {servicio}
+👩‍🎨 *Profesional:* {profesional}
+
+💰 *Para confirmar tu turno*, realizá el pago del anticipo de *{monto_anticipo}* a:
+
+🏦 *Banco:* {banco}
+🔢 *CBU:* {cbu}
+🏷️ *Alias:* {alias}
+👤 *Titular:* {titular}
+
+⏳ *Importante:* 
+Tenés {tiempo_vencimiento} horas para realizar el pago.
+Si no se confirma en ese tiempo, el turno se cancelará automáticamente.
+
+¡Gracias por elegirnos! 💖`;
+
+            // Reemplazar variables
+            let mensajeFinal = mensajeBase;
+            for (const [key, value] of Object.entries(variables)) {
+                mensajeFinal = mensajeFinal.replace(new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), value);
+            }
+
+            // 🔥 ENVIAR A LA DUEÑA (con los mismos datos de pago)
+            window.enviarWhatsApp(configNegocio.telefono, mensajeFinal);
+            
+            // Push notification (resumen rápido)
+            const mensajePush = 
+`🆕 RESERVA PENDIENTE - ${configNegocio.nombre}
+👤 Cliente: ${booking.cliente_nombre}
+💰 Monto: $${montoAnticipo}`;
+
+            await window.enviarNotificacionPush(
+                `💰 ${configNegocio.nombre} - Pago pendiente`,
+                mensajePush,
+                'moneybag',
+                'high'
+            );
+            
+            console.log('✅ Dueña notificada con DATOS DE PAGO + Push');
+            return true;
+        }
+        
+        // Fallback por si no existe la función
+        console.log('⚠️ Usando notificación simple (fallback)');
         const config = await getConfigNegocio();
         
         const fechaConDia = window.formatFechaCompleta ? 
@@ -338,7 +437,6 @@ window.notificarReservaPendiente = async function(booking) {
             
         const profesional = booking.profesional_nombre || booking.trabajador_nombre || 'No asignada';
         
-        // WhatsApp a la dueña
         const mensajeWhatsApp = 
 `🆕 *RESERVA PENDIENTE DE PAGO - ${config.nombre}*
 
@@ -354,7 +452,6 @@ window.notificarReservaPendiente = async function(booking) {
 
         window.enviarWhatsApp(config.telefono, mensajeWhatsApp);
         
-        // Push notification
         const mensajePush = 
 `🆕 RESERVA PENDIENTE - ${config.nombre}
 👤 Cliente: ${booking.cliente_nombre}
@@ -367,8 +464,9 @@ window.notificarReservaPendiente = async function(booking) {
             'high'
         );
         
-        console.log('✅ Notificación de reserva pendiente enviada (WhatsApp + Push)');
+        console.log('✅ Notificación de reserva pendiente enviada (WhatsApp simple + Push)');
         return true;
+        
     } catch (error) {
         console.error('Error en notificarReservaPendiente:', error);
         return false;
@@ -456,4 +554,4 @@ ${canceladoPor === 'cliente' ? '🔔 Cancelado por cliente' : '🔔 Cancelado po
     }
 };
 
-console.log('✅ whatsapp-helper.js - VERSIÓN GENÉRICA CARGADA (CON PUSH EN NUEVA RESERVA)');
+console.log('✅ whatsapp-helper.js - VERSIÓN GENÉRICA CARGADA (CON DATOS DE PAGO A LA DUEÑA)');
