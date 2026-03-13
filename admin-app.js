@@ -793,58 +793,58 @@ function AdminApp() {
     }, [userRole, userNivel, profesional]);
 
     // ============================================
-    // FUNCIÓN PARA CONFIRMAR PAGO
-    // ============================================
-    const confirmarPago = async (id, bookingData) => {
-        if (!confirm(`¿Confirmar que se recibió el pago de ${bookingData.cliente_nombre}? El turno pasará a "Reservado".`)) return;
+// FUNCIÓN PARA CONFIRMAR PAGO (CORREGIDA)
+// ============================================
+const confirmarPago = async (id, bookingData) => {
+    if (!confirm(`¿Confirmar que se recibió el pago de ${bookingData.cliente_nombre}? El turno pasará a "Reservado".`)) return;
+    
+    try {
+        console.log(`💰 Confirmando pago para reserva ${id}`);
         
-        try {
-            console.log(`💰 Confirmando pago para reserva ${id}`);
-            
-            // Cambiar estado a "Reservado"
-            const response = await fetch(
-                `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${getNegocioId()}&id=eq.${id}`,
-                {
-                    method: 'PATCH',
-                    headers: {
-                        'apikey': window.SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ estado: 'Reservado' })
-                }
-            );
-            
-            if (!response.ok) {
-                throw new Error('Error al confirmar pago');
+        // Cambiar estado a "Reservado"
+        const response = await fetch(
+            `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${getNegocioId()}&id=eq.${id}`,
+            {
+                method: 'PATCH',
+                headers: {
+                    'apikey': window.SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ estado: 'Reservado' })
             }
-            
-            console.log('📤 Enviando confirmación de turno al cliente...');
-            
-            // Obtener configuración del negocio
-            const configNegocio = await window.cargarConfiguracionNegocio();
-            
-            // Formatear fecha con día de la semana
-            const fechaConDia = window.formatFechaCompleta ? 
-                window.formatFechaCompleta(bookingData.fecha) : 
-                bookingData.fecha;
-            
-            // Formatear hora a 12h
-            const horaFormateada = window.formatTo12Hour ? 
-                window.formatTo12Hour(bookingData.hora_inicio) : 
-                bookingData.hora_inicio;
-            
-            // Obtener nombre del negocio
-            const nombreNegocio = configNegocio?.nombre || await window.getNombreNegocio ? 
-                await window.getNombreNegocio() : 
-                'Mi Negocio';
-            
-            // 🔥 USAR LA NUEVA FUNCIÓN CENTRALIZADA
-if (window.enviarConfirmacionPago) {
-    await window.enviarConfirmacionPago(bookingData, configNegocio);
-} else {
-    // Fallback por si no existe la función
-    const mensajeCliente = 
+        );
+        
+        if (!response.ok) {
+            throw new Error('Error al confirmar pago');
+        }
+        
+        console.log('📤 Enviando confirmación de turno al cliente...');
+        
+        // Obtener configuración del negocio
+        const configNegocio = await window.cargarConfiguracionNegocio();
+        
+        // Formatear fecha con día de la semana
+        const fechaConDia = window.formatFechaCompleta ? 
+            window.formatFechaCompleta(bookingData.fecha) : 
+            bookingData.fecha;
+        
+        // Formatear hora a 12h
+        const horaFormateada = window.formatTo12Hour ? 
+            window.formatTo12Hour(bookingData.hora_inicio) : 
+            bookingData.hora_inicio;
+        
+        // Obtener nombre del negocio
+        const nombreNegocio = configNegocio?.nombre || await window.getNombreNegocio ? 
+            await window.getNombreNegocio() : 
+            'Mi Negocio';
+        
+        // 🔥 USAR LA NUEVA FUNCIÓN CENTRALIZADA
+        if (window.enviarConfirmacionPago) {
+            await window.enviarConfirmacionPago(bookingData, configNegocio);
+        } else {
+            // Fallback por si no existe la función
+            const mensajeCliente = 
 `💅 *${nombreNegocio} - Turno Confirmado* 🎉
 
 Hola *${bookingData.cliente_nombre}*, ¡tu turno ha sido CONFIRMADO!
@@ -859,8 +859,17 @@ Hola *${bookingData.cliente_nombre}*, ¡tu turno ha sido CONFIRMADO!
 Te esperamos 💖
 Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipación.`;
 
-    window.enviarWhatsApp(bookingData.cliente_whatsapp, mensajeCliente);
-}
+            window.enviarWhatsApp(bookingData.cliente_whatsapp, mensajeCliente);
+        }
+        
+        alert('✅ Pago confirmado. Turno reservado y cliente notificado.');
+        fetchBookings(); // Recargar reservas
+        
+    } catch (error) {  // ← ¡ESTE CATCH ES EL QUE FALTABA!
+        console.error('Error confirmando pago:', error);
+        alert('❌ Error al confirmar el pago');
+    }
+};
     // ============================================
     // HANDLE CANCEL
     // ============================================
