@@ -34,7 +34,7 @@ window.esIOS = function() {
 };
 
 // ============================================
-// FUNCIÓN UNIVERSAL WHATSAPP
+// FUNCIÓN UNIVERSAL WHATSAPP (CORREGIDA - CON EMOJIS)
 // ============================================
 window.enviarWhatsApp = function(telefono, mensaje) {
     try {
@@ -46,19 +46,18 @@ window.enviarWhatsApp = function(telefono, mensaje) {
             numeroCompleto = `53${telefonoLimpio}`;
         }
         
-        const mensajeCodificado = encodeURIComponent(mensaje);
+        // 🔥 CAMBIO CLAVE: encodeURI en lugar de encodeURIComponent
+        // encodeURI preserva los caracteres especiales como emojis
+        const mensajeCodificado = encodeURI(mensaje);
+        
+        // Usar wa.me que funciona mejor con emojis en móviles
         const url = `https://wa.me/${numeroCompleto}?text=${mensajeCodificado}`;
         
         console.log('🔗 Abriendo WhatsApp:', url);
         
-        if (window.esIOS()) {
-            window.location.href = url;
-        } else {
-            const nuevaVentana = window.open(url, '_blank');
-            if (!nuevaVentana || nuevaVentana.closed || typeof nuevaVentana.closed === 'undefined') {
-                window.location.href = url;
-            }
-        }
+        // Abrir directamente
+        window.open(url, '_blank');
+        
         return true;
     } catch (error) {
         console.error('❌ Error en enviarWhatsApp:', error);
