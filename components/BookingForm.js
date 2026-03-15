@@ -1,5 +1,6 @@
 // components/BookingForm.js - VERSIÓN GENÉRICA
 // CON LÓGICA COMPLETA DE NOTIFICACIONES (PUSH SIEMPRE)
+// CORREGIDO: Hora local para archivos ICS
 
 function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cliente }) {
     const [submitting, setSubmitting] = React.useState(false);
@@ -39,70 +40,77 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
     }
 
     // ============================================
-    // FORMATEAR FECHA UTC
+    // FORMATEAR FECHA LOCAL (NO UTC)
     // ============================================
-    function formatearFechaUTC(fechaStr, horaStr) {
+    function formatearFechaLocal(fechaStr, horaStr) {
         const [year, month, day] = fechaStr.split('-');
         const [hour, minute] = horaStr.split(':');
         
-        const fecha = new Date(Date.UTC(
-            parseInt(year), 
-            parseInt(month) - 1, 
-            parseInt(day), 
-            parseInt(hour), 
-            parseInt(minute), 
-            0
-        ));
+        // Crear fecha en hora LOCAL (sin UTC)
+        const fecha = new Date(year, month - 1, day, hour, minute, 0);
         
-        const yearStr = fecha.getUTCFullYear();
-        const monthStr = String(fecha.getUTCMonth() + 1).padStart(2, '0');
-        const dayStr = String(fecha.getUTCDate()).padStart(2, '0');
-        const hourStr2 = String(fecha.getUTCHours()).padStart(2, '0');
-        const minuteStr = String(fecha.getUTCMinutes()).padStart(2, '0');
+        // Formato: 20260316T080000 (SIN Z al final)
+        const yearStr = fecha.getFullYear();
+        const monthStr = String(fecha.getMonth() + 1).padStart(2, '0');
+        const dayStr = String(fecha.getDate()).padStart(2, '0');
+        const hourStr2 = String(fecha.getHours()).padStart(2, '0');
+        const minuteStr = String(fecha.getMinutes()).padStart(2, '0');
         
-        return `${yearStr}${monthStr}${dayStr}T${hourStr2}${minuteStr}00Z`;
+        return `${yearStr}${monthStr}${dayStr}T${hourStr2}${minuteStr}00`;
     }
 
     // ============================================
-    // GENERAR ARCHIVO .ICS
+    // GENERAR ARCHIVO .ICS (CORREGIDO - HORA LOCAL)
     // ============================================
     function generarArchivoCalendario(bookingData, nombreNegocio) {
         const uid = generarUUID();
         
-        const dtstart = formatearFechaUTC(bookingData.fecha, bookingData.hora_inicio);
-        const dtend = formatearFechaUTC(bookingData.fecha, bookingData.hora_fin);
+        // 🔥 USAR HORA LOCAL, NO UTC
+        const dtstart = formatearFechaLocal(bookingData.fecha, bookingData.hora_inicio);
+        const dtend = formatearFechaLocal(bookingData.fecha, bookingData.hora_fin);
         
         const ahora = new Date();
-        const stampYear = ahora.getUTCFullYear();
-        const stampMonth = String(ahora.getUTCMonth() + 1).padStart(2, '0');
-        const stampDay = String(ahora.getUTCDate()).padStart(2, '0');
-        const stampHour = String(ahora.getUTCHours()).padStart(2, '0');
-        const stampMin = String(ahora.getUTCMinutes()).padStart(2, '0');
+        const stampYear = ahora.getFullYear();
+        const stampMonth = String(ahora.getMonth() + 1).padStart(2, '0');
+        const stampDay = String(ahora.getDate()).padStart(2, '0');
+        const stampHour = String(ahora.getHours()).padStart(2, '0');
+        const stampMin = String(ahora.getMinutes()).padStart(2, '0');
         const dtstamp = `${stampYear}${stampMonth}${stampDay}T${stampHour}${stampMin}00`;
         
-        const fecha = new Date(bookingData.fecha + 'T' + bookingData.hora_inicio + ':00');
-        const fechaFin = new Date(bookingData.fecha + 'T' + bookingData.hora_fin + ':00');
+        // Crear fechas para la descripción
+        const [year, month, day] = bookingData.fecha.split('-').map(Number);
+        const [startHour, startMinute] = bookingData.hora_inicio.split(':').map(Number);
+        const [endHour, endMinute] = bookingData.hora_fin.split(':').map(Number);
+        
+        const fechaInicio = new Date(year, month - 1, day, startHour, startMinute, 0);
+        const fechaFin = new Date(year, month - 1, day, endHour, endMinute, 0);
         
         const meses = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         
-        const dia = fecha.getDate();
-        const mes = meses[fecha.getMonth()];
-        const año = fecha.getFullYear();
-        let horas = fecha.getHours();
-        const minutos = fecha.getMinutes().toString().padStart(2, '0');
-        const ampm = horas >= 12 ? 'PM' : 'AM';
-        horas = horas % 12;
-        horas = horas ? horas : 12;
-        const fechaInicioStr = `${dia} ${mes} ${año} ${horas}:${minutos} ${ampm}`;
+        // Formatear fecha inicio para descripción
+        const diaInicio = fechaInicio.getDate();
+        const mesInicio = meses[fechaInicio.getMonth()];
+        const añoInicio = fechaInicio.getFullYear();
+        let horasInicio = fechaInicio.getHours();
+        const minutosInicio = fechaInicio.getMinutes().toString().padStart(2, '0');
+        const ampmInicio = horasInicio >= 12 ? 'PM' : 'AM';
+        horasInicio = horasInicio % 12;
+        horasInicio = horasInicio ? horasInicio : 12;
+        const fechaInicioStr = `${diaInicio} ${mesInicio} ${añoInicio} ${horasInicio}:${minutosInicio} ${ampmInicio}`;
         
+        // Formatear fecha fin para descripción
+        const diaFin = fechaFin.getDate();
+        const mesFin = meses[fechaFin.getMonth()];
+        const añoFin = fechaFin.getFullYear();
         let horasFin = fechaFin.getHours();
         const minutosFin = fechaFin.getMinutes().toString().padStart(2, '0');
         const ampmFin = horasFin >= 12 ? 'PM' : 'AM';
         horasFin = horasFin % 12;
         horasFin = horasFin ? horasFin : 12;
+        const fechaFinStr = `${diaFin} ${mesFin} ${añoFin} ${horasFin}:${minutosFin} ${ampmFin}`;
         
         const linea1 = `Appointment Details`;
-        const linea2 = `When: ${fechaInicioStr} - ${horasFin}:${minutosFin} ${ampmFin} (CST)`;
+        const linea2 = `When: ${fechaInicioStr} - ${fechaFinStr} (CST)`;
         const linea3 = `Service: ${bookingData.servicio}`;
         const linea4 = `Provider Name: ${bookingData.profesional_nombre}`;
         const linea5 = `Client: ${bookingData.cliente_nombre}`;
@@ -140,8 +148,8 @@ BEGIN:VEVENT
 UID:${uid}
 SEQUENCE:0
 DTSTAMP:${dtstamp}
-DTSTART:${dtstart}
-DTEND:${dtend}
+DTSTART;TZID=America/Havana:${dtstart}
+DTEND;TZID=America/Havana:${dtend}
 SUMMARY:${bookingData.servicio} with ${bookingData.profesional_nombre}
 TRANSP:OPAQUE
 LOCATION:${nombreNegocio}
