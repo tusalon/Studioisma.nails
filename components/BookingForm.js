@@ -46,10 +46,8 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
         const [year, month, day] = fechaStr.split('-');
         const [hour, minute] = horaStr.split(':');
         
-        // Crear fecha en hora LOCAL (sin UTC)
         const fecha = new Date(year, month - 1, day, hour, minute, 0);
         
-        // Formato: 20260316T080000 (SIN Z al final)
         const yearStr = fecha.getFullYear();
         const monthStr = String(fecha.getMonth() + 1).padStart(2, '0');
         const dayStr = String(fecha.getDate()).padStart(2, '0');
@@ -65,7 +63,6 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
     function generarArchivoCalendario(bookingData, nombreNegocio) {
         const uid = generarUUID();
         
-        // 🔥 USAR HORA LOCAL, NO UTC
         const dtstart = formatearFechaLocal(bookingData.fecha, bookingData.hora_inicio);
         const dtend = formatearFechaLocal(bookingData.fecha, bookingData.hora_fin);
         
@@ -77,7 +74,6 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
         const stampMin = String(ahora.getMinutes()).padStart(2, '0');
         const dtstamp = `${stampYear}${stampMonth}${stampDay}T${stampHour}${stampMin}00`;
         
-        // Crear fechas para la descripción
         const [year, month, day] = bookingData.fecha.split('-').map(Number);
         const [startHour, startMinute] = bookingData.hora_inicio.split(':').map(Number);
         const [endHour, endMinute] = bookingData.hora_fin.split(':').map(Number);
@@ -87,7 +83,6 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
         
         const meses = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         
-        // Formatear fecha inicio para descripción
         const diaInicio = fechaInicio.getDate();
         const mesInicio = meses[fechaInicio.getMonth()];
         const añoInicio = fechaInicio.getFullYear();
@@ -98,7 +93,6 @@ function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cli
         horasInicio = horasInicio ? horasInicio : 12;
         const fechaInicioStr = `${diaInicio} ${mesInicio} ${añoInicio} ${horasInicio}:${minutosInicio} ${ampmInicio}`;
         
-        // Formatear fecha fin para descripción
         const diaFin = fechaFin.getDate();
         const mesFin = meses[fechaFin.getMonth()];
         const añoFin = fechaFin.getFullYear();
@@ -196,49 +190,6 @@ END:VCALENDAR`;
     }
 
     // ============================================
-    // FUNCIÓN: ENVIAR WHATSAPP AL CLIENTE
-    // ============================================
-    async function enviarDatosPagoWhatsApp(clienteWhatsapp, datosReserva, configNegocio) {
-        try {
-            // Si requiere anticipo, enviar mensaje con datos de pago
-            if (configNegocio?.requiere_anticipo === true && window.enviarMensajePago) {
-                console.log('💰 Cliente: mensaje de pago (requiere anticipo)');
-                await window.enviarMensajePago(datosReserva, configNegocio);
-                return true;
-            }
-            
-            // Si NO requiere anticipo, enviar mensaje de confirmación simple
-            console.log('📱 Cliente: mensaje de confirmación (sin anticipo)');
-            const fechaConDia = window.formatFechaCompleta ? 
-                window.formatFechaCompleta(datosReserva.fecha) : 
-                datosReserva.fecha;
-            
-            const horaFormateada = window.formatTo12Hour ? 
-                window.formatTo12Hour(datosReserva.hora_inicio) : 
-                datosReserva.hora_inicio;
-            
-            const mensajeConfirmacion = 
-`✅ *${configNegocio?.nombre || 'Mi Salón'} - Turno Confirmado*
-
-Hola *${datosReserva.cliente_nombre}*, tu turno ha sido agendado.
-
-📅 *Fecha:* ${fechaConDia}
-⏰ *Hora:* ${horaFormateada}
-💈 *Servicio:* ${datosReserva.servicio}
-👩‍🎨 *Profesional:* ${datosReserva.profesional_nombre}
-
-¡Te esperamos! 💖`;
-
-            window.enviarWhatsApp(clienteWhatsapp, mensajeConfirmacion);
-            return true;
-            
-        } catch (error) {
-            console.error('Error enviando WhatsApp:', error);
-            return false;
-        }
-    }
-
-    // ============================================
     // HANDLE SUBMIT (CORREGIDO - CON PUSH SIEMPRE)
     // ============================================
     const handleSubmit = async (e) => {
@@ -259,11 +210,9 @@ Hola *${datosReserva.cliente_nombre}*, tu turno ha sido agendado.
 
             const endTime = calculateEndTime(time, service.duracion);
             
-            // Obtener configuración del negocio
             const configNegocio = await window.cargarConfiguracionNegocio();
             const requiereAnticipo = configNegocio?.requiere_anticipo === true;
 
-            // Crear reserva con estado dinámico
             const bookingData = {
                 cliente_nombre: cliente.nombre,
                 cliente_whatsapp: cliente.whatsapp,
@@ -282,28 +231,27 @@ Hola *${datosReserva.cliente_nombre}*, tu turno ha sido agendado.
             if (result.success && result.data) {
                 console.log(`✅ Reserva creada en estado ${result.data.estado}`);
                 
-                // Obtener nombre del negocio
                 const nombreNegocio = configNegocio?.nombre || 'Mi Salón';
                 
-                // 🔥 1. ENVIAR WHATSAPP AL CLIENTE
-                await enviarDatosPagoWhatsApp(cliente.whatsapp, result.data, configNegocio);
+                // 🔥 USAR LAS FUNCIONES CENTRALIZADAS DE WHATSAPP-HELPER
+                if (requiereAnticipo && window.enviarMensajePago) {
+                    await window.enviarMensajePago(result.data, configNegocio);
+                } else if (!requiereAnticipo && window.enviarConfirmacionReserva) {
+                    await window.enviarConfirmacionReserva(result.data, configNegocio);
+                }
                 
-                // 🔥 2. NOTIFICAR A LA DUEÑA (WHATSAPP + PUSH NTFY SIEMPRE)
                 if (requiereAnticipo) {
-                    // CON ANTICIPO: Mensaje con datos de pago + push pendiente
                     if (window.notificarReservaPendiente) {
                         await window.notificarReservaPendiente(result.data);
                     }
                     console.log('📱 Dueña notificada: RESERVA PENDIENTE DE PAGO (con datos + push)');
                 } else {
-                    // SIN ANTICIPO: Mensaje de nuevo turno + push también
                     if (window.notificarNuevaReserva) {
                         await window.notificarNuevaReserva(result.data);
                     }
                     console.log('📱 Dueña notificada: NUEVO TURNO AGENDADO (con push)');
                 }
                 
-                // Generar y descargar archivo ICS
                 const icsContent = generarArchivoCalendario(result.data, nombreNegocio);
                 
                 const fechaSegura = result.data.fecha.replace(/-/g, '');
@@ -344,7 +292,6 @@ Hola *${datosReserva.cliente_nombre}*, tu turno ha sido agendado.
                 </div>
 
                 <div className="space-y-4">
-                    {/* Resumen del turno */}
                     <div className="bg-gradient-to-r from-pink-50 to-pink-100 p-4 rounded-xl border border-pink-200 space-y-2">
                         <div className="flex items-center gap-3 text-pink-700">
                             <span className="text-2xl">

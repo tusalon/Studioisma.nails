@@ -1,5 +1,6 @@
 // utils/whatsapp-helper.js - VERSIÓN GENÉRICA COMPLETA
 // CON FORMATO EXACTO DE MENSAJE
+// + Función unificada para confirmación de reserva
 
 console.log('📱 whatsapp-helper.js - VERSIÓN GENÉRICA');
 
@@ -46,18 +47,14 @@ window.enviarWhatsApp = function(telefono, mensaje) {
             numeroCompleto = `53${telefonoLimpio}`;
         }
         
-        // 🔥 CAMBIO CLAVE: encodeURI en lugar de encodeURIComponent
-        // encodeURI preserva los caracteres especiales como emojis
+        // 🔥 encodeURI preserva los caracteres especiales como emojis
         const mensajeCodificado = encodeURI(mensaje);
         
-        // Usar wa.me que funciona mejor con emojis en móviles
         const url = `https://wa.me/${numeroCompleto}?text=${mensajeCodificado}`;
         
         console.log('🔗 Abriendo WhatsApp:', url);
         
-        // Abrir directamente
         window.open(url, '_blank');
-        
         return true;
     } catch (error) {
         console.error('❌ Error en enviarWhatsApp:', error);
@@ -148,7 +145,6 @@ window.enviarMensajePago = async function(booking, configNegocio) {
 
         const profesional = booking.profesional_nombre || booking.trabajador_nombre || 'No asignada';
 
-        // 🔥 FORMATO EXACTO COMO LO PEDISTE
         const mensajeFinal = 
 `💅 *${configNegocio.nombre || 'Mi Salón'} - Confirmación de Turno*
 
@@ -173,7 +169,6 @@ El turno se cancelará automáticamente si no se confirma el pago dentro de las 
 
 ¡Gracias por elegirnos! 💖`;
 
-        // Enviar al cliente
         window.enviarWhatsApp(booking.cliente_whatsapp, mensajeFinal);
         
         console.log('✅ Mensaje de pago enviado al CLIENTE');
@@ -181,6 +176,51 @@ El turno se cancelará automáticamente si no se confirma el pago dentro de las 
 
     } catch (error) {
         console.error('Error en enviarMensajePago:', error);
+        return false;
+    }
+};
+
+// ============================================
+// 🆕 FUNCIÓN: ENVIAR CONFIRMACIÓN DE RESERVA (SIN ANTICIPO)
+// ============================================
+window.enviarConfirmacionReserva = async function(booking, configNegocio) {
+    try {
+        if (!booking) {
+            console.error('❌ No hay datos de reserva');
+            return false;
+        }
+
+        console.log('📱 Enviando confirmación de reserva al cliente (sin anticipo)...');
+
+        if (!configNegocio) {
+            configNegocio = await window.cargarConfiguracionNegocio();
+        }
+
+        const fechaConDia = window.formatFechaCompleta ? 
+            window.formatFechaCompleta(booking.fecha) : 
+            booking.fecha;
+        
+        const horaFormateada = window.formatTo12Hour ? 
+            window.formatTo12Hour(booking.hora_inicio) : 
+            booking.hora_inicio;
+
+        const mensajeConfirmacion = 
+`✅ *${configNegocio?.nombre || 'Mi Salón'} - Turno Confirmado*
+
+Hola *${booking.cliente_nombre}*, tu turno ha sido agendado.
+
+📅 *Fecha:* ${fechaConDia}
+⏰ *Hora:* ${horaFormateada}
+💈 *Servicio:* ${booking.servicio}
+👩‍🎨 *Profesional:* ${booking.profesional_nombre || booking.trabajador_nombre}
+
+¡Te esperamos! ❤️`;
+
+        window.enviarWhatsApp(booking.cliente_whatsapp, mensajeConfirmacion);
+        return true;
+
+    } catch (error) {
+        console.error('Error en enviarConfirmacionReserva:', error);
         return false;
     }
 };
@@ -223,7 +263,7 @@ Hola *${booking.cliente_nombre}*, ¡tu turno ha sido CONFIRMADO!
 
 ✅ *Pago recibido correctamente*
 
-Te esperamos 💖
+Te esperamos ❤️
 Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipación.`;
 
         window.enviarWhatsApp(booking.cliente_whatsapp, mensajeConfirmacion);
@@ -310,11 +350,9 @@ window.notificarReservaPendiente = async function(booking) {
 
         const configNegocio = await window.cargarConfiguracionNegocio();
         
-        // Usar la misma función enviarMensajePago pero para la dueña
         if (window.enviarMensajePago) {
             console.log('💰 Enviando mensaje con datos de pago a la DUEÑA');
             
-            // Calcular monto del anticipo
             let montoAnticipo = 0;
             if (configNegocio.tipo_anticipo === 'fijo') {
                 montoAnticipo = configNegocio.valor_anticipo || 0;
@@ -341,7 +379,6 @@ window.notificarReservaPendiente = async function(booking) {
 
             const profesional = booking.profesional_nombre || booking.trabajador_nombre || 'No asignada';
 
-            // 🔥 MISMO FORMATO QUE EL CLIENTE
             const mensajeFinal = 
 `💅 *${configNegocio.nombre || 'Mi Salón'} - Confirmación de Turno*
 
@@ -366,10 +403,8 @@ El turno se cancelará automáticamente si no se confirma el pago dentro de las 
 
 ¡Gracias por elegirnos! 💖`;
 
-            // 🔥 ENVIAR A LA DUEÑA
             window.enviarWhatsApp(configNegocio.telefono, mensajeFinal);
             
-            // Push notification
             const mensajePush = 
 `🆕 RESERVA PENDIENTE - ${configNegocio.nombre}
 👤 Cliente: ${booking.cliente_nombre}
@@ -386,7 +421,6 @@ El turno se cancelará automáticamente si no se confirma el pago dentro de las 
             return true;
         }
         
-        // Fallback por si no existe la función
         console.log('⚠️ Usando notificación simple (fallback)');
         const config = await getConfigNegocio();
         
