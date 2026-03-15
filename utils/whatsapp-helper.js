@@ -152,7 +152,7 @@ window.enviarMensajePago = async function(booking, configNegocio) {
 
 📅 *Fecha:* ${fechaConDia}
 ⏰ *Hora:* ${horaFormateada}
-💈 *Servicio:* ${booking.servicio}
+💅 *Servicio:* ${booking.servicio}
 👩‍🎨 *Profesional:* ${profesional}
 
 💰 *Para confirmar tu turno*, envía el *anticipo de ${montoAnticipo} CUP* por:
@@ -211,7 +211,7 @@ Hola *${booking.cliente_nombre}*, tu turno ha sido agendado.
 
 📅 *Fecha:* ${fechaConDia}
 ⏰ *Hora:* ${horaFormateada}
-💈 *Servicio:* ${booking.servicio}
+💅 *Servicio:*${booking.servicio}
 👩‍🎨 *Profesional:* ${booking.profesional_nombre || booking.trabajador_nombre}
 
 ¡Te esperamos! ❤️`;
@@ -258,7 +258,7 @@ Hola *${booking.cliente_nombre}*, ¡tu turno ha sido CONFIRMADO!
 
 📅 *Fecha:* ${fechaConDia}
 ⏰ *Hora:* ${horaFormateada}
-💈 *Servicio:* ${booking.servicio}
+💅 *Servicio:* ${booking.servicio}
 👩‍🎨 *Profesional:* ${booking.profesional_nombre || booking.trabajador_nombre}
 
 ✅ *Pago recibido correctamente*
@@ -386,7 +386,7 @@ window.notificarReservaPendiente = async function(booking) {
 
 📅 *Fecha:* ${fechaConDia}
 ⏰ *Hora:* ${horaFormateada}
-💈 *Servicio:* ${booking.servicio}
+💅 *Servicio:* ${booking.servicio}
 👩‍🎨 *Profesional:* ${profesional}
 
 💰 *Para confirmar tu turno*, envía el *anticipo de ${montoAnticipo} CUP* por:
@@ -517,7 +517,7 @@ Hola *${booking.cliente_nombre}*, lamentamos informarte que tu turno ha sido can
 
 📅 *Fecha:* ${fechaConDia}
 ⏰ *Hora:* ${horaFormateada}
-💈 *Servicio:* ${booking.servicio}
+💅 *Servicio:* ${booking.servicio}
 👩‍🎨 *Profesional:* ${profesional}
 
 🔔 *Motivo:* Cancelación por administración

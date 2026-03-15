@@ -841,7 +841,7 @@ Hola *${bookingData.cliente_nombre}*, ¡tu turno ha sido CONFIRMADO!
 
 📅 *Fecha:* ${fechaConDia}
 ⏰ *Hora:* ${horaFormateada}
-💈 *Servicio:* ${bookingData.servicio}
+💅 *Servicio:* ${bookingData.servicio}
 👩‍🎨 *Profesional:* ${bookingData.profesional_nombre || bookingData.trabajador_nombre}
 
 ✅ *Pago recibido correctamente*
