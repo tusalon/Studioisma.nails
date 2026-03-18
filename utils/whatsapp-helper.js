@@ -48,15 +48,12 @@ window.enviarWhatsApp = function(telefono, mensaje) {
             numeroCompleto = `53${telefonoLimpio}`;
         }
         
-        // Codificamos el mensaje correctamente
         const mensajeCodificado = encodeURIComponent(mensaje);
         
-        // Usamos api.whatsapp.com que abre directamente la app en móviles y evita pantallas intermedias
         const url = `https://api.whatsapp.com/send?phone=${numeroCompleto}&text=${mensajeCodificado}`;
         
         console.log('🔗 Abriendo WhatsApp:', url);
         
-        // Usamos location.href para ser más directo y evitar bloqueos de pop-up
         window.location.href = url;
         return true;
     } catch (error) {
@@ -318,7 +315,6 @@ window.notificarNuevaReserva = async function(booking) {
 
         window.enviarWhatsApp(config.telefono, mensajeWhatsApp);
         
-        // 🔥 MODIFICADO: Se agregó el servicio al mensaje push
         const mensajePush = 
 `🆕 NUEVA RESERVA - ${config.nombre}
 👤 Cliente: ${booking.cliente_nombre}
@@ -410,7 +406,6 @@ El turno se cancelará automáticamente si no se confirma el pago dentro de las 
 
             window.enviarWhatsApp(configNegocio.telefono, mensajeFinal);
             
-            // 🔥 MODIFICADO: Se agregó el servicio al mensaje push
             const mensajePush = 
 `🆕 RESERVA PENDIENTE - ${configNegocio.nombre}
 👤 Cliente: ${booking.cliente_nombre}
@@ -479,7 +474,7 @@ El turno se cancelará automáticamente si no se confirma el pago dentro de las 
 };
 
 // ============================================
-// NOTIFICACIÓN DE CANCELACIÓN
+// NOTIFICACIÓN DE CANCELACIÓN (CORREGIDA)
 // ============================================
 window.notificarCancelacion = async function(booking) {
     try {
@@ -503,6 +498,7 @@ window.notificarCancelacion = async function(booking) {
         const profesional = booking.profesional_nombre || booking.trabajador_nombre || 'No asignada';
         const canceladoPor = booking.cancelado_por || 'admin';
         
+        // Mensaje para el dueño (si canceló el cliente)
         const mensajeDuenno = 
 `❌ *CANCELACIÓN - ${config.nombre}*
 
@@ -513,12 +509,10 @@ window.notificarCancelacion = async function(booking) {
 ⏰ *Hora:* ${horaFormateada}
 👩‍🎨 *Profesional:* ${profesional}
 
-${canceladoPor === 'cliente' ? 'El cliente canceló su turno.' : 'El administrador canceló la reserva.'}`;
+El cliente canceló su turno.`;
 
-        window.enviarWhatsApp(config.telefono, mensajeDuenno);
-
-        if (canceladoPor === 'admin') {
-            const mensajeCliente = 
+        // Mensaje para el cliente (si canceló el admin)
+        const mensajeCliente = 
 `❌ *CANCELACIÓN DE TURNO - ${config.nombre}*
 
 Hola *${booking.cliente_nombre}*, lamentamos informarte que tu turno ha sido cancelado.
@@ -532,10 +526,19 @@ Hola *${booking.cliente_nombre}*, lamentamos informarte que tu turno ha sido can
 
 📱 *¿Querés reprogramar?* Podés hacerlo desde la app`;
 
+        // Enviar según quién canceló
+        if (canceladoPor === 'cliente') {
+            // El cliente canceló: avisar al admin
+            window.enviarWhatsApp(config.telefono, mensajeDuenno);
+            console.log('📱 Admin notificado de cancelación por cliente');
+        } else {
+            // El admin canceló: avisar al cliente
             const telefonoCliente = booking.cliente_whatsapp.replace(/\D/g, '');
             window.enviarWhatsApp(telefonoCliente, mensajeCliente);
+            console.log('📱 Cliente notificado de cancelación por admin');
         }
 
+        // Notificación push (siempre, para ambos casos)
         const mensajePush = 
 `❌ CANCELACION - ${config.nombre}
 👤 Cliente: ${booking.cliente_nombre}
