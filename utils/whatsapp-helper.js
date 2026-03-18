@@ -36,7 +36,7 @@ window.esIOS = function() {
 };
 
 // ============================================
-// FUNCIÓN UNIVERSAL WHATSAPP (CORREGIDA - CON EMOJIS)
+// FUNCIÓN UNIVERSAL WHATSAPP (CORREGIDA - CON encodeURIComponent)
 // ============================================
 window.enviarWhatsApp = function(telefono, mensaje) {
     try {
@@ -48,8 +48,8 @@ window.enviarWhatsApp = function(telefono, mensaje) {
             numeroCompleto = `53${telefonoLimpio}`;
         }
         
-        // 🔥 encodeURI preserva los caracteres especiales como emojis
-        const mensajeCodificado = encodeURI(mensaje);
+        // 🔥 Usamos encodeURIComponent para codificar correctamente emojis y caracteres especiales
+        const mensajeCodificado = encodeURIComponent(mensaje);
         
         const url = `https://wa.me/${numeroCompleto}?text=${mensajeCodificado}`;
         
