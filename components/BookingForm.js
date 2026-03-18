@@ -1,6 +1,7 @@
 // components/BookingForm.js - VERSIÓN GENÉRICA
 // CON LÓGICA COMPLETA DE NOTIFICACIONES (PUSH SIEMPRE)
 // CORREGIDO: Hora local para archivos ICS
+// MODIFICADO: Solo notifica a la dueña, NO al cliente
 
 function BookingForm({ service, profesional, date, time, onSubmit, onCancel, cliente }) {
     const [submitting, setSubmitting] = React.useState(false);
@@ -190,7 +191,7 @@ END:VCALENDAR`;
     }
 
     // ============================================
-    // HANDLE SUBMIT (CORREGIDO - CON PUSH SIEMPRE)
+    // HANDLE SUBMIT (CORREGIDO - SOLO NOTIFICAR A DUEÑA)
     // ============================================
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -233,13 +234,14 @@ END:VCALENDAR`;
                 
                 const nombreNegocio = configNegocio?.nombre || 'Mi Salón';
                 
-                // 🔥 USAR LAS FUNCIONES CENTRALIZADAS DE WHATSAPP-HELPER
-                if (requiereAnticipo && window.enviarMensajePago) {
-                    await window.enviarMensajePago(result.data, configNegocio);
-                } else if (!requiereAnticipo && window.enviarConfirmacionReserva) {
-                    await window.enviarConfirmacionReserva(result.data, configNegocio);
-                }
+                // ❌ ELIMINADO: No enviar WhatsApp al cliente
+                // if (requiereAnticipo && window.enviarMensajePago) {
+                //     await window.enviarMensajePago(result.data, configNegocio);
+                // } else if (!requiereAnticipo && window.enviarConfirmacionReserva) {
+                //     await window.enviarConfirmacionReserva(result.data, configNegocio);
+                // }
                 
+                // ✅ SOLO notificar a la dueña
                 if (requiereAnticipo) {
                     if (window.notificarReservaPendiente) {
                         await window.notificarReservaPendiente(result.data);
@@ -252,6 +254,7 @@ END:VCALENDAR`;
                     console.log('📱 Dueña notificada: NUEVO TURNO AGENDADO (con push)');
                 }
                 
+                // Generar y descargar archivo ICS
                 const icsContent = generarArchivoCalendario(result.data, nombreNegocio);
                 
                 const fechaSegura = result.data.fecha.replace(/-/g, '');
