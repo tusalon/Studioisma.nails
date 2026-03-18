@@ -112,7 +112,8 @@ window.salonServicios = {
                         precio: servicio.precio,
                         descripcion: servicio.descripcion || '',
                         activo: true,
-                        imagen: servicio.imagen || null
+                        imagen: servicio.imagen || null,
+                        horarios_permitidos: servicio.horarios_permitidos || []   // ✅ NUEVO
                     })
                 }
             );
@@ -151,6 +152,7 @@ window.salonServicios = {
             if (cambios.descripcion !== undefined) datosActualizar.descripcion = cambios.descripcion;
             if (cambios.activo !== undefined) datosActualizar.activo = cambios.activo;
             if (cambios.imagen !== undefined) datosActualizar.imagen = cambios.imagen;
+            if (cambios.horarios_permitidos !== undefined) datosActualizar.horarios_permitidos = cambios.horarios_permitidos;   // ✅ NUEVO
             
             const response = await fetch(
                 `${window.SUPABASE_URL}/rest/v1/servicios?negocio_id=eq.${negocioId}&id=eq.${id}`,
