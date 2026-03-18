@@ -36,7 +36,7 @@ window.esIOS = function() {
 };
 
 // ============================================
-// FUNCIÓN UNIVERSAL WHATSAPP (CORREGIDA - CON encodeURIComponent)
+// FUNCIÓN UNIVERSAL WHATSAPP (CORREGIDA - USA api.whatsapp.com Y location.href)
 // ============================================
 window.enviarWhatsApp = function(telefono, mensaje) {
     try {
@@ -48,14 +48,16 @@ window.enviarWhatsApp = function(telefono, mensaje) {
             numeroCompleto = `53${telefonoLimpio}`;
         }
         
-        // 🔥 Usamos encodeURIComponent para codificar correctamente emojis y caracteres especiales
+        // Codificamos el mensaje correctamente
         const mensajeCodificado = encodeURIComponent(mensaje);
         
-        const url = `https://wa.me/${numeroCompleto}?text=${mensajeCodificado}`;
+        // Usamos api.whatsapp.com que abre directamente la app en móviles y evita pantallas intermedias
+        const url = `https://api.whatsapp.com/send?phone=${numeroCompleto}&text=${mensajeCodificado}`;
         
         console.log('🔗 Abriendo WhatsApp:', url);
         
-        window.open(url, '_blank');
+        // Usamos location.href para ser más directo y evitar bloqueos de pop-up
+        window.location.href = url;
         return true;
     } catch (error) {
         console.error('❌ Error en enviarWhatsApp:', error);
