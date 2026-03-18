@@ -1,22 +1,22 @@
-// sw.js - Service Worker para Studioisma.nails
+// sw.js - Service Worker para H&H STUDIO NAILS
 
-const CACHE_NAME = 'studioisma-nails-v1';
+const CACHE_NAME = 'hhnails-v1';
 const urlsToCache = [
-  '/Studioisma.nails/',
-  '/Studioisma.nails/index.html',
-  '/Studioisma.nails/admin.html',
-  '/Studioisma.nails/admin-login.html',
-  '/Studioisma.nails/setup-wizard.html',
-  '/Studioisma.nails/editar-negocio.html',
-  '/Studioisma.nails/manifest.json',
-  '/Studioisma.nails/icons/icon-72x72.png',
-  '/Studioisma.nails/icons/icon-96x96.png',
-  '/Studioisma.nails/icons/icon-128x128.png',
-  '/Studioisma.nails/icons/icon-144x144.png',
-  '/Studioisma.nails/icons/icon-152x152.png',
-  '/Studioisma.nails/icons/icon-192x192.png',
-  '/Studioisma.nails/icons/icon-384x384.png',
-  '/Studioisma.nails/icons/icon-512x512.png'
+  '/hhnails/',
+  '/hhnails/index.html',
+  '/hhnails/admin.html',
+  '/hhnails/admin-login.html',
+  '/hhnails/setup-wizard.html',
+  '/hhnails/editar-negocio.html',
+  '/hhnails/manifest.json',
+  '/hhnails/icons/icon-72x72.png',
+  '/hhnails/icons/icon-96x96.png',
+  '/hhnails/icons/icon-128x128.png',
+  '/hhnails/icons/icon-144x144.png',
+  '/hhnails/icons/icon-152x152.png',
+  '/hhnails/icons/icon-192x192.png',
+  '/hhnails/icons/icon-384x384.png',
+  '/hhnails/icons/icon-512x512.png'
 ];
 
 // ============================================
@@ -108,7 +108,7 @@ self.addEventListener('fetch', event => {
           }
           // Si no hay cache y es imagen, devolver icon por defecto
           if (event.request.url.match(/\.(jpg|jpeg|png|gif|svg|webp)$/)) {
-            return caches.match('/Studioisma.nails/icons/icon-192x192.png');
+            return caches.match('/hhnails/icons/icon-192x192.png');
           }
           return new Response('Error de red', { status: 408 });
         });
@@ -138,6 +138,6 @@ self.addEventListener('message', event => {
   }
 });
 
-console.log('✅ Service Worker configurado para Studioisma.nails');
+console.log('✅ Service Worker configurado para H&H STUDIO NAILS');
 console.log('📦 Cache:', CACHE_NAME);
 console.log('📄 Archivos a cachear:', urlsToCache.length);
