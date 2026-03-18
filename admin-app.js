@@ -930,8 +930,8 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
             localStorage.removeItem('clienteAuth');
             localStorage.removeItem('negocioId');
             
-            console.log('🚪 Sesión cerrada, redirigiendo a login');
-            window.location.href = 'admin-login.html';
+            console.log('🚪 Sesión cerrada, redirigiendo a index.html');
+            window.location.href = 'index.html'; // Cambiado de admin-login.html a index.html
         }
     };
 
