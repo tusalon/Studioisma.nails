@@ -9,9 +9,7 @@ function ConfigPanel({ profesionalId, modoRestringido }) {
         duracion_turnos: 60,
         intervalo_entre_turnos: 0,
         modo_24h: false,
-        max_antelacion_dias: 30,
-        min_antelacion_horas: 2,
-        min_cancelacion_horas: 1
+        max_antelacion_dias: 30
     });
     const [cargando, setCargando] = React.useState(true);
     const [nombreNegocio, setNombreNegocio] = React.useState('');
@@ -72,9 +70,7 @@ function ConfigPanel({ profesionalId, modoRestringido }) {
                     duracion_turnos: 60,
                     intervalo_entre_turnos: 0,
                     modo_24h: false,
-                    max_antelacion_dias: 30,
-                    min_antelacion_horas: 2,
-                    min_cancelacion_horas: 1
+                    max_antelacion_dias: 30
                 });
             }
         } catch (error) {
@@ -174,7 +170,7 @@ function ConfigPanel({ profesionalId, modoRestringido }) {
                         
                         <div className="mb-4">
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Antelacion maxima para reservar
+                                Antelación máxima para reservar
                             </label>
                             <div className="grid grid-cols-4 sm:grid-cols-4 gap-2">
                                 {opcionesAntelacion.map(opcion => (
@@ -199,48 +195,6 @@ function ConfigPanel({ profesionalId, modoRestringido }) {
                             </div>
                         </div>
                         
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Antelacion minima para reservar (horas)
-                                </label>
-                                <input
-                                    type="number"
-                                    value={configGlobal.min_antelacion_horas ?? 2}
-                                    onChange={(e) => setConfigGlobal({
-                                        ...configGlobal,
-                                        min_antelacion_horas: Math.max(0, parseInt(e.target.value) || 0)
-                                    })}
-                                    className="w-full border rounded-lg px-3 py-2 text-sm"
-                                    min="0"
-                                    step="1"
-                                />
-                                <p className="text-xs text-gray-500 mt-1">
-                                    Ej: 2 evita reservar turnos con menos de 2 horas.
-                                </p>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Antelacion minima para cancelar (horas)
-                                </label>
-                                <input
-                                    type="number"
-                                    value={configGlobal.min_cancelacion_horas ?? 1}
-                                    onChange={(e) => setConfigGlobal({
-                                        ...configGlobal,
-                                        min_cancelacion_horas: Math.max(0, parseInt(e.target.value) || 0)
-                                    })}
-                                    className="w-full border rounded-lg px-3 py-2 text-sm"
-                                    min="0"
-                                    step="1"
-                                />
-                                <p className="text-xs text-gray-500 mt-1">
-                                    Ej: 1 evita cancelar cuando falta menos de 1 hora.
-                                </p>
-                            </div>
-                        </div>
-
                         <div className="mb-4">
                             <label className="flex items-center gap-3 cursor-pointer">
                                 <input
