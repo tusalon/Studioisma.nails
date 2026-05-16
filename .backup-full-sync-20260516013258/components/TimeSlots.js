@@ -66,34 +66,6 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
         });
     };
 
-    const crearBloquesTrabajo = (slotsDelDia = [], duracionTurno = 60, intervaloTurnos = 0) => {
-        const minutosTrabajo = slotsDelDia
-            .map(timeToMinutes)
-            .sort((a, b) => a - b);
-
-        const bloquesBase = minutosTrabajo.map((minuto, index) => {
-            const siguiente = minutosTrabajo[index + 1];
-            const anterior = minutosTrabajo[index - 1];
-            return {
-                inicio: minuto,
-                fin: siguiente ? Math.max(siguiente, minuto + duracionTurno) : 24 * 60,
-                conectaAnterior: anterior !== undefined && minuto - anterior <= duracionTurno + intervaloTurnos
-            };
-        });
-
-        const bloques = [];
-        bloquesBase.forEach(bloque => {
-            const ultimo = bloques[bloques.length - 1];
-            if (ultimo && bloque.conectaAnterior) {
-                ultimo.fin = Math.max(ultimo.fin, bloque.fin);
-            } else {
-                bloques.push({ inicio: bloque.inicio, fin: bloque.fin });
-            }
-        });
-
-        return bloques;
-    };
-
     React.useEffect(() => {
         if (!profesional) return;
         
@@ -186,9 +158,6 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
                 
                 const indicesDelDia = horariosPorDia[diaSemana] || [];
                 const descansosDelDia = descansosPorDia[diaSemana] || [];
-                const configGlobal = window.salonConfig ? await window.salonConfig.get() : {};
-                const duracionTurno = Number(configGlobal?.duracion_turnos || 60);
-                const intervaloTurnos = Number(configGlobal?.intervalo_entre_turnos || 0);
                 
                 if (indicesDelDia.length === 0) {
                     console.log(`⚠️ No hay horas configuradas para ${diaSemana}`);
@@ -208,7 +177,6 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
                 
                 console.log(`📋 Slots base para ${diaSemana} (después de filtro de servicio):`, baseSlots);
                 
-                const bloquesTrabajo = crearBloquesTrabajo(baseSlots, duracionTurno, intervaloTurnos);
                 const todayStr = getCurrentLocalDate();
                 const esHoy = date === todayStr;
                 
@@ -231,11 +199,6 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
 
                     if (esHoy && slotStart < minAllowedMinutes) {
                         console.log(`⏰ Slot ${slotStartStr} es menor a hora mínima - EXCLUIDO`);
-                        return false;
-                    }
-
-                    if (!bloquesTrabajo.some(bloque => slotStart >= bloque.inicio && slotEnd <= bloque.fin)) {
-                        console.log(`Slot ${slotStartStr} no cabe antes del proximo horario - EXCLUIDO`);
                         return false;
                     }
 
