@@ -23,7 +23,7 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
                 if (window.salonConfig) {
                     const config = await window.salonConfig.get();
                     console.log('⚙️ Configuración cargada en TimeSlots:', config);
-                    if (config && config.max_antelacion_dias !== undefined) {
+                    if (config && config.max_antelacion_dias) {
                         setMaxAntelacionDias(config.max_antelacion_dias);
                     }
                     if (config && config.min_antelacion_horas !== undefined) {
@@ -193,7 +193,7 @@ function TimeSlots({ service, date, profesional, onTimeSelect, selectedTime }) {
                 const diffTime = fechaSeleccionada - hoy;
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                 
-                if (Number(maxAntelacionDias) > 0 && diffDays > Number(maxAntelacionDias)) {
+                if (diffDays > maxAntelacionDias) {
                     console.log(`🚫 Fecha ${date} supera antelación máxima de ${maxAntelacionDias} días`);
                     setError(`Solo se puede reservar con hasta ${maxAntelacionDias} días de antelación`);
                     setSlots([]);
