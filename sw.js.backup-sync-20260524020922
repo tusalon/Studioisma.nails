@@ -1,6 +1,6 @@
 // sw.js - Service Worker para STUDIO ISMA NAILS
 
-const CACHE_NAME = 'Studioisma.nails-v29';
+const CACHE_NAME = 'Studioisma.nails-v26';
 const urlsToCache = [
   '/Studioisma.nails/',
   '/Studioisma.nails/index.html',
