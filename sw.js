@@ -1,6 +1,6 @@
 // sw.js - Service Worker para STUDIO ISMA NAILS
 
-const CACHE_NAME = 'Studioisma.nails-v29';
+const CACHE_NAME = 'Studioisma.nails-v47';
 const urlsToCache = [
   '/Studioisma.nails/',
   '/Studioisma.nails/index.html',
@@ -17,7 +17,14 @@ const urlsToCache = [
   '/Studioisma.nails/icons/icon-152x152.png',
   '/Studioisma.nails/icons/icon-192x192.png',
   '/Studioisma.nails/icons/icon-384x384.png',
-  '/Studioisma.nails/icons/icon-512x512.png'
+  '/Studioisma.nails/icons/icon-512x512.png',
+  '/Studioisma.nails/vendor/react.production.min.js',
+  '/Studioisma.nails/vendor/react-dom.production.min.js',
+  '/Studioisma.nails/vendor/babel.min.js',
+  '/Studioisma.nails/vendor/bcrypt.min.js',
+  '/Studioisma.nails/vendor/tailwind-browser.js',
+  '/Studioisma.nails/vendor/lucide/lucide.css',
+  '/Studioisma.nails/vendor/lucide/lucide.woff2'
 ];
 
 // ============================================
